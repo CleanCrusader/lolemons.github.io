@@ -3,408 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Natural Lemon - Cold Pressed Lemon Oil Natural Cleaners</title>
-    <style>
-        /* Reset and base styles */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-        }
-        
-        body {
-            color: #333;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        
-        /* Header styles - Lemon Yellow and Leaf Green color scheme */
-        header {
-            background-color: #ffffff;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 0;
-        }
-        
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .logo a {
-            text-decoration: none;
-            color: #333;
-        }
-        
-        .logo img {
-            max-height: 50px;
-        }
-        
-        nav ul {
-            display: flex;
-            list-style: none;
-        }
-        
-        nav ul li {
-            margin-left: 30px;
-        }
-        
-        nav ul li a {
-            text-decoration: none;
-            color: #333;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-        
-        nav ul li a:hover {
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        /* Hero section */
-        .hero {
-            background-color: #FFFACD; /* Light Lemon Chiffon color */
-            padding: 80px 0;
-            text-align: center;
-        }
-        
-        .hero h1 {
-            font-size: 48px;
-            margin-bottom: 20px;
-            color: #1a1a1a;
-        }
-        
-        .hero p {
-            font-size: 20px;
-            color: #666;
-            max-width: 700px;
-            margin: 0 auto 30px;
-        }
-        
-        .cta-button {
-            display: inline-block;
-            background-color: #FFC72C; /* Lemon Yellow */
-            color: #333;
-            padding: 12px 30px;
-            border-radius: 30px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
-            transition: background-color 0.3s;
-        }
-        
-        .cta-button:hover {
-            background-color: #FFD700; /* Gold */
-        }
-        
-        /* Features section */
-        .features {
-            padding: 80px 0;
-            background-color: #ffffff;
-        }
-        
-        .section-title {
-            text-align: center;
-            font-size: 36px;
-            margin-bottom: 60px;
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        .features-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 30px;
-        }
-        
-        .feature-card {
-            flex: 0 0 calc(33.333% - 30px);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: transform 0.3s;
-        }
-        
-        .feature-card:hover {
-            transform: translateY(-10px);
-        }
-        
-        .feature-icon {
-            font-size: 40px;
-            margin-bottom: 20px;
-            color: #FFC72C; /* Lemon Yellow */
-        }
-        
-        .feature-card h3 {
-            margin-bottom: 15px;
-            font-size: 22px;
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        /* Products section */
-        .products {
-            padding: 80px 0;
-            background-color: #F9FFF5; /* Very Light Green */
-        }
-        
-        .product-container {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            margin-top: 40px;
-            gap: 40px;
-        }
-        
-        .product-card {
-            flex: 0 0 calc(50% - 40px);
-            max-width: 500px;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            background-color: white;
-            text-align: center;
-        }
-        
-        .product-image {
-            width: 100%;
-            max-height: 300px;
-            object-fit: contain;
-            margin-bottom: 20px;
-        }
-        
-        .product-title {
-            font-size: 24px;
-            margin-bottom: 15px;
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        .product-description {
-            margin-bottom: 20px;
-        }
-        
-        .product-price {
-            font-size: 22px;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 20px;
-        }
-        
-        /* How it works */
-        .how-it-works {
-            padding: 80px 0;
-            background-color: #FFFACD; /* Light Lemon Chiffon */
-        }
-        
-        .steps {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 40px;
-        }
-        
-        .step {
-            flex: 0 0 30%;
-            text-align: center;
-        }
-        
-        .step-number {
-            width: 60px;
-            height: 60px;
-            background-color: #FFC72C; /* Lemon Yellow */
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin: 0 auto 20px;
-            color: white;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        
-        .step h3 {
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        /* Testimonials */
-        .testimonials {
-            padding: 80px 0;
-            background-color: #ffffff;
-        }
-        
-        .testimonials-grid {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 30px;
-            justify-content: center;
-        }
-        
-        .testimonial-card {
-            flex: 0 0 calc(33.333% - 30px);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-            background-color: #F9FFF5; /* Very Light Green */
-        }
-        
-        .testimonial-text {
-            margin-bottom: 20px;
-            font-style: italic;
-        }
-        
-        .testimonial-author {
-            font-weight: bold;
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        /* FAQ Section */
-        .faq {
-            padding: 80px 0;
-            background-color: #FFFACD; /* Light Lemon Chiffon */
-        }
-        
-        .faq-item {
-            margin-bottom: 20px;
-            padding: 20px;
-            border-radius: 10px;
-            background-color: white;
-            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
-        }
-        
-        .faq-question {
-            font-weight: bold;
-            margin-bottom: 10px;
-            font-size: 18px;
-            color: #4CAF50; /* Leaf Green */
-        }
-        
-        /* CTA Section */
-        .cta-section {
-            padding: 80px 0;
-            background-color: #4CAF50; /* Leaf Green */
-            color: white;
-            text-align: center;
-        }
-        
-        .cta-section h2 {
-            font-size: 36px;
-            margin-bottom: 20px;
-        }
-        
-        .cta-section p {
-            margin-bottom: 30px;
-            max-width: 700px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-        
-        .cta-white-button {
-            display: inline-block;
-            background-color: #FFC72C; /* Lemon Yellow */
-            color: #333;
-            padding: 12px 30px;
-            border-radius: 30px;
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 18px;
-            transition: background-color 0.3s;
-        }
-        
-        .cta-white-button:hover {
-            background-color: #FFD700; /* Gold */
-        }
-        
-        /* Footer */
-        footer {
-            background-color: #333;
-            color: white;
-            padding: 60px 0 30px;
-        }
-        
-        .footer-content {
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            margin-bottom: 40px;
-        }
-        
-        .footer-column {
-            flex: 1;
-            min-width: 200px;
-            margin-bottom: 30px;
-        }
-        
-        .footer-column h3 {
-            margin-bottom: 20px;
-            font-size: 18px;
-            color: #FFC72C; /* Lemon Yellow */
-        }
-        
-        .footer-column ul {
-            list-style: none;
-        }
-        
-        .footer-column ul li {
-            margin-bottom: 10px;
-        }
-        
-        .footer-column ul li a {
-            color: #ccc;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-        
-        .footer-column ul li a:hover {
-            color: #FFC72C; /* Lemon Yellow */
-        }
-        
-        .copyright {
-            text-align: center;
-            padding-top: 20px;
-            border-top: 1px solid #555;
-            color: #ccc;
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .features-grid, .testimonials-grid {
-                flex-direction: column;
-            }
-            
-            .feature-card, .testimonial-card {
-                flex: 0 0 100%;
-            }
-            
-            .steps {
-                flex-direction: column;
-                gap: 30px;
-            }
-            
-            .step {
-                flex: 0 0 100%;
-            }
-            
-            .product-card {
-                flex: 0 0 100%;
-            }
-            
-            nav ul {
-                display: none; /* In a real site, you'd add a mobile menu toggle */
-            }
-        }
-    </style>
+    <title>Natural Lemon Oil - Powerful Natural Cleaning Solution</title>
+    <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
     <!-- Header -->
@@ -412,17 +12,16 @@
         <div class="container">
             <div class="header-content">
                 <div class="logo">
-                    <a href="#"><img src="/api/placeholder/180/50" alt="Natural Lemon Logo"></a>
+                    <a href="#"><img src="https://m.media-amazon.com/images/S/abs-image-upload-na/b/AmazonStores/ATVPDKIKX0DER/3b7d0d1d7ad6a3cacb84ed957c2cdb8c.w400.h400.jpg" alt="Lemon Oil Logo" class="logo-img"></a>
                 </div>
                 <nav>
                     <ul>
                         <li><a href="#">Home</a></li>
                         <li><a href="#features">Benefits</a></li>
-                        <li><a href="#products">Products</a></li>
                         <li><a href="#how-it-works">How It Works</a></li>
-                        <li><a href="#testimonials">Reviews</a></li>
+                        <li><a href="#testimonials">Testimonials</a></li>
                         <li><a href="#faq">FAQ</a></li>
-                        <li><a href="#" class="cta-button">Shop Now</a></li>
+                        <li><a href="#products" class="cta-button">Shop Now</a></li>
                     </ul>
                 </nav>
             </div>
@@ -432,58 +31,57 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="container">
-            <h1>Nature's Cleaning Power</h1>
-            <p>Harness the natural cleaning power of cold-pressed lemon oil. A safer, effective alternative to harsh chemicals for your home, pets, and family.</p>
+            <h1>Pure Cold-Pressed Lemon Oil</h1>
+            <p>Harness the natural cleaning power of lemons with our premium cold-pressed lemon oil. 100% natural, effective, and eco-friendly for all your cleaning needs.</p>
             <a href="#products" class="cta-button">Shop Our Products</a>
-        </div>
-    </section>
-
-    <!-- Features Section -->
-    <section class="features" id="features">
-        <div class="container">
-            <h2 class="section-title">Why Choose Natural Lemon Oil?</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🍋</div>
-                    <h3>100% Natural</h3>
-                    <p>Our cold-pressed lemon oil is extracted directly from fresh lemon peels with no additives or harsh chemicals. Pure cleaning power from nature.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🏠</div>
-                    <h3>Multi-Surface Use</h3>
-                    <p>Works effectively on multiple surfaces including kitchens, bathrooms, floors, and furniture. One natural solution for all your cleaning needs.</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">👪</div>
-                    <h3>Family & Pet Safe</h3>
-                    <p>Unlike chemical cleaners, our natural lemon oil is safe to use around children and pets when used as directed, bringing peace of mind to your cleaning routine.</p>
-                </div>
-            </div>
         </div>
     </section>
 
     <!-- Products Section -->
     <section class="products" id="products">
         <div class="container">
-            <h2 class="section-title">Our Products</h2>
-            <div class="product-container">
+            <h2 class="section-title">Our Premium Lemon Oil Products</h2>
+            <div class="products-grid">
                 <div class="product-card">
-                    <img src="images/clean_crusader_concentrate.png" alt="Clean Crusader Cold Pressed Lemon Oil Concentrate" class="product-image">
-                    <h3 class="product-title">Cold Pressed Lemon Oil Concentrate</h3>
-                    <p class="product-description">Our powerful concentrate formula made from cold-pressed lemon oil. Dilute as needed for various cleaning applications. One bottle makes up to 16 gallons of cleaning solution.</p>
-                    <p class="product-price">$19.99</p>
-                    <a href="https://www.amazon.com/dp/B0C14RYXK2" class="cta-button">Buy Now</a>
+                    <img src="https://m.media-amazon.com/images/I/71r2UM7aHJL._AC_SL1500_.jpg" alt="Cold Pressed Lemon Oil" class="product-image">
+                    <h3>Clean Crusader Natural Blend of Cold Pressed Lemon oil & Plant based emulsifier- 24oz</h3>
+                    <p>Our premium cold-pressed lemon oil is extracted from fresh lemon peels for maximum potency. Perfect for cleaning, aromatherapy, and natural household solutions.</p>
+                    <a href="https://www.amazon.com/dp/B0C14RYXK2" class="product-button">View on Amazon</a>
                 </div>
                 <div class="product-card">
-                    <img src="images/clean_crusader_24oz.png" alt="Clean Crusader Cold Pressed Lemon Oil Ready-To-Use Spray" class="product-image">
-                    <h3 class="product-title">Ready-To-Use Lemon Oil Spray</h3>
-                    <p class="product-description">Our convenient ready-to-use spray bottle combines our cold-pressed lemon oil with purified water at the perfect concentration for daily cleaning tasks.</p>
-                    <p class="product-price">$14.99</p>
-                    <a href="https://www.amazon.com/dp/B0DF5Y13MZ" class="cta-button">Buy Now</a>
+                    <img src="https://m.media-amazon.com/images/I/71TDBS0qWcL._AC_SL1500_.jpg" alt="Lemon Oil Concentrate" class="product-image">
+                    <h3>Clean Crusader Concentrate - Cold Pressed Lemon Oil Concentrate - 16oz</h3>
+                    <p>Our concentrated formula delivers powerful cleaning action with a refreshing lemon scent. Ideal for larger cleaning jobs and long-term use.</p>
+                    <a href="https://www.amazon.com/dp/B0DF5Y13MZ" class="product-button">View on Amazon</a>
                 </div>
             </div>
         </div>
     </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Natural Cleaning Benefits</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">♲</div>
+                    <h3>100% Natural</h3>
+                    <p>Our cold-pressed lemon oil is extracted directly from lemon peels with no additives or chemicals, making it perfectly safe for your home and family.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">✓</div>
+                    <h3>Powerful Cleaning</h3>
+                    <p>The natural d-limonene in lemon oil cuts through grease, grime, and sticky residues effectively without harsh chemicals.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">♥</div>
+                    <h3>Fresh Scent</h3>
+                    <p>Enjoy the refreshing, natural citrus aroma that leaves your home smelling clean and revitalized - no artificial fragrances needed.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- How It Works -->
     <section class="how-it-works" id="how-it-works">
         <div class="container">
@@ -491,18 +89,18 @@
             <div class="steps">
                 <div class="step">
                     <div class="step-number">1</div>
-                    <h3>Dilute (Concentrate Only)</h3>
-                    <p>For the concentrate: Mix 1 ounce with 16 ounces of water in a spray bottle. For tougher jobs, use a stronger concentration. The ready-to-use spray requires no mixing.</p>
+                    <h3>Dilute</h3>
+                    <p>Mix a few drops of our concentrated lemon oil with water or your preferred base solution in a spray bottle.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">2</div>
-                    <h3>Apply to Surface</h3>
-                    <p>Spray directly onto surfaces or apply with a cloth. For stubborn stains or grime, let the solution sit for 1-2 minutes before wiping.</p>
+                    <h3>Apply</h3>
+                    <p>Spray on surfaces that need cleaning or add to your mop water for floor cleaning. Great for countertops, appliances, and more.</p>
                 </div>
                 <div class="step">
                     <div class="step-number">3</div>
-                    <h3>Wipe Clean</h3>
-                    <p>Wipe with a clean cloth or paper towel. No need to rinse! Enjoy the fresh, natural lemon scent and sparkling clean results.</p>
+                    <h3>Enjoy</h3>
+                    <p>Wipe clean and enjoy the fresh lemon scent and spotless surfaces without any chemical residue or harmful toxins.</p>
                 </div>
             </div>
         </div>
@@ -514,16 +112,49 @@
             <h2 class="section-title">What Our Customers Say</h2>
             <div class="testimonials-grid">
                 <div class="testimonial-card">
-                    <p class="testimonial-text">"I love that I can clean my entire home with one natural product. The lemon oil cuts through grease amazingly and leaves everything smelling fresh without chemicals!"</p>
+                    <p class="testimonial-text">"I've tried many natural cleaners before, but this lemon oil is on another level. It cuts through kitchen grease like nothing else and leaves everything smelling amazing!"</p>
                     <p class="testimonial-author">- Sarah M., Verified Buyer</p>
                 </div>
                 <div class="testimonial-card">
-                    <p class="testimonial-text">"As someone with chemical sensitivities, finding this natural lemon oil cleaner has been a game-changer. It works even better than the harsh products I used to use."</p>
-                    <p class="testimonial-author">- Robert J., Verified Buyer</p>
+                    <p class="testimonial-text">"As someone with chemical sensitivities, finding effective cleaners is difficult. This lemon oil is gentle on my system but tough on dirt and grime. A perfect solution!"</p>
+                    <p class="testimonial-author">- Michael P., Verified Buyer</p>
                 </div>
                 <div class="testimonial-card">
-                    <p class="testimonial-text">"The concentrate is incredibly economical. I've been using the same bottle for months and still have plenty left. Works great on kitchen counters and bathroom surfaces."</p>
-                    <p class="testimonial-author">- Amy T., Verified Buyer</p>
+                    <p class="testimonial-text">"The concentration of this oil is impressive. A tiny amount goes a long way, making it very economical. Plus, it's safer for my kids and pets than chemical cleaners."</p>
+                    <p class="testimonial-author">- Jennifer K., Verified Buyer</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Uses Section -->
+    <section class="uses">
+        <div class="container">
+            <h2 class="section-title">Multiple Uses For Your Home</h2>
+            <div class="uses-grid">
+                <div class="use-item">
+                    <h3>Kitchen Cleaning</h3>
+                    <p>Perfect for cutting through grease on stovetops, counters, and appliances without leaving chemical residue.</p>
+                </div>
+                <div class="use-item">
+                    <h3>Bathroom Freshener</h3>
+                    <p>Eliminates odors and cleans surfaces with a fresh citrus scent that naturally deodorizes.</p>
+                </div>
+                <div class="use-item">
+                    <h3>Floor Cleaner</h3>
+                    <p>Add a few drops to your mop water for gleaming, fresh-smelling floors without sticky residue.</p>
+                </div>
+                <div class="use-item">
+                    <h3>Furniture Polish</h3>
+                    <p>Mix with olive oil for a natural wood polish that cleans, conditions, and protects.</p>
+                </div>
+                <div class="use-item">
+                    <h3>Laundry Booster</h3>
+                    <p>Add to your wash for brighter whites and a fresh scent without harsh chemicals.</p>
+                </div>
+                <div class="use-item">
+                    <h3>Air Freshener</h3>
+                    <p>Add to a diffuser or spray bottle with water for a natural home fragrance solution.</p>
                 </div>
             </div>
         </div>
@@ -534,20 +165,20 @@
         <div class="container">
             <h2 class="section-title">Frequently Asked Questions</h2>
             <div class="faq-item">
-                <p class="faq-question">Is your lemon oil safe to use around pets?</p>
-                <p class="faq-answer">Yes, when used as directed, our lemon oil products are safe to use around pets. We recommend allowing cleaned surfaces to dry completely before letting pets have access to them.</p>
+                <p class="faq-question">Is your lemon oil safe for all surfaces?</p>
+                <p class="faq-answer">Our lemon oil is safe for most household surfaces, but we recommend testing on an inconspicuous area first. It's best to avoid using concentrated oil on untreated or unsealed wood, as well as some plastics.</p>
             </div>
             <div class="faq-item">
-                <p class="faq-question">What surfaces can I use lemon oil on?</p>
-                <p class="faq-answer">Our lemon oil is versatile and can be used on most hard surfaces including countertops, sinks, bathtubs, tiles, floors, and appliances. We don't recommend using it on unsealed wood or natural stone surfaces without testing in an inconspicuous area first.</p>
+                <p class="faq-question">How long does the scent last after cleaning?</p>
+                <p class="faq-answer">The fresh lemon scent typically lasts 24-48 hours after application, leaving your home with a natural citrus freshness without being overwhelming.</p>
             </div>
             <div class="faq-item">
-                <p class="faq-question">How long does the scent last?</p>
-                <p class="faq-answer">The fresh lemon scent typically lasts for several hours after cleaning. Unlike artificial fragrances, our natural lemon oil provides a clean, authentic citrus aroma that isn't overwhelming.</p>
+                <p class="faq-question">How is cold-pressed lemon oil different from other lemon cleaners?</p>
+                <p class="faq-answer">Cold-pressed lemon oil maintains all the natural compounds of lemon peel, including d-limonene, which gives it superior cleaning power. Many commercial "lemon" cleaners use artificial fragrances and harsh chemicals instead of real lemon oil.</p>
             </div>
             <div class="faq-item">
-                <p class="faq-question">How much concentrate should I use for different cleaning tasks?</p>
-                <p class="faq-answer">For regular cleaning, mix 1 oz of concentrate with 16 oz of water. For tougher cleaning jobs or degreasing, you can use a stronger solution of 1 oz concentrate to 8 oz water. For gentle cleaning of delicate surfaces, dilute further to 1 oz concentrate with 24 oz water.</p>
+                <p class="faq-question">Is your lemon oil product safe for homes with pets?</p>
+                <p class="faq-answer">Yes, when properly diluted and used as directed, our lemon oil is much safer than chemical cleaners. However, we recommend keeping concentrated oils away from pets and ensuring surfaces are dry before allowing pet contact.</p>
             </div>
         </div>
     </section>
@@ -555,9 +186,9 @@
     <!-- CTA Section -->
     <section class="cta-section">
         <div class="container">
-            <h2>Ready for a Natural Clean?</h2>
-            <p>Join thousands of satisfied customers who have switched to the natural cleaning power of cold-pressed lemon oil.</p>
-            <a href="#products" class="cta-white-button">Shop Now</a>
+            <h2>Ready to Experience the Natural Power of Lemon?</h2>
+            <p>Join thousands of satisfied customers who have switched to our natural lemon oil cleaning solution.</p>
+            <a href="#products" class="cta-white-button">Shop Our Products</a>
         </div>
     </section>
 
@@ -566,16 +197,15 @@
         <div class="container">
             <div class="footer-content">
                 <div class="footer-column">
-                    <h3>Natural Lemon</h3>
-                    <p>Harnessing nature's cleaning power through cold-pressed lemon oil. Safe, effective, and environmentally friendly.</p>
+                    <h3>Natural Lemon Oil</h3>
+                    <p>Pure, powerful, and natural cleaning solutions for the modern home. Our 100% cold-pressed lemon oil harnesses nature's cleaning power.</p>
                 </div>
                 <div class="footer-column">
                     <h3>Shop</h3>
                     <ul>
-                        <li><a href="#products">All Products</a></li>
-                        <li><a href="#">Concentrates</a></li>
-                        <li><a href="#">Ready-to-Use</a></li>
-                        <li><a href="#">Gift Sets</a></li>
+                        <li><a href="https://www.amazon.com/dp/B0C14RYXK2">4oz Lemon Oil</a></li>
+                        <li><a href="https://www.amazon.com/dp/B0DF5Y13MZ">16oz Concentrate</a></li>
+                        <li><a href="https://www.amazon.com/stores/page/A264C477-7337-42CE-B6D4-EE666FE2955F">Amazon Store</a></li>
                     </ul>
                 </div>
                 <div class="footer-column">
@@ -591,14 +221,14 @@
                     <h3>Company</h3>
                     <ul>
                         <li><a href="#">About Us</a></li>
-                        <li><a href="#">Our Story</a></li>
-                        <li><a href="#">Sustainability</a></li>
                         <li><a href="#">Blog</a></li>
+                        <li><a href="#">Our Commitment</a></li>
+                        <li><a href="#">Sustainability</a></li>
                     </ul>
                 </div>
             </div>
             <div class="copyright">
-                <p>&copy; 2025 Natural Lemon. All rights reserved.</p>
+                <p>&copy; 2025 Natural Lemon Oil. All rights reserved.</p>
             </div>
         </div>
     </footer>
