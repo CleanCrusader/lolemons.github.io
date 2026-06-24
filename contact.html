@@ -110,6 +110,23 @@
         </ul>
       </div>
     </div>
+    <div class="newsletter-strip">
+      <div>
+        <h5>Get cleaning tips &amp; first dibs on new products</h5>
+        <p style="margin:0; color: var(--cream-dim); font-size: 0.85rem;">A separate list from Amazon order data — only people who sign up here, ever.</p>
+      </div>
+      <form data-subscribe-form class="newsletter-form">
+        <input type="text" name="name" placeholder="First name (optional)" aria-label="First name">
+        <input type="email" name="email" placeholder="you@email.com" required aria-label="Email address">
+        <label class="consent-label">
+          <input type="checkbox" name="consent" required>
+          I'd like to receive occasional emails about new products and cleaning tips.
+        </label>
+        <button type="submit" class="btn btn-primary">Subscribe</button>
+        <p data-subscribe-status class="subscribe-status" role="status"></p>
+      </form>
+    </div>
+
     <div class="footer-bottom">
       <span>© 2026 Lots of Lemon LLC. All rights reserved.</span>
       <span>Made with real lemons.</span>
@@ -118,5 +135,6 @@
 </footer>
 
 <script src="js/main.js"></script>
+<script src="js/subscribe.js"></script>
 </body>
 </html>

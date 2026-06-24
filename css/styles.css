@@ -443,7 +443,64 @@ h1, h2, h3, h4 {
   .footer-grid { grid-template-columns: 1fr 1fr; }
 }
 
-/* ---------- Simple inner-page header (about/contact/products) ---------- */
+/* ---------- Newsletter signup (separate from Amazon order data) ---------- */
+.newsletter-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  align-items: start;
+  padding-bottom: 40px;
+  margin-bottom: 40px;
+  border-bottom: 1px solid rgba(251,246,231,0.1);
+}
+.newsletter-strip h5 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--cream);
+  text-transform: none;
+  letter-spacing: normal;
+  margin-bottom: 0.3em;
+}
+.newsletter-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.newsletter-form input[type="text"],
+.newsletter-form input[type="email"] {
+  flex: 1 1 180px;
+  padding: 11px 14px;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(251,246,231,0.25);
+  background: var(--char);
+  color: var(--cream);
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+}
+.newsletter-form input::placeholder { color: var(--cream-dim); }
+.newsletter-form input:focus { outline: 2px solid var(--zest); border-color: var(--zest); }
+.consent-label {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--cream-dim);
+}
+.consent-label input { margin-top: 3px; }
+.subscribe-status {
+  flex: 1 0 100%;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--zest);
+  min-height: 1.2em;
+}
+
+@media (max-width: 760px) {
+  .newsletter-strip { grid-template-columns: 1fr; }
+}
 .page-hero {
   padding: 64px 0 48px;
   border-bottom: 1px solid rgba(245,196,0,0.12);

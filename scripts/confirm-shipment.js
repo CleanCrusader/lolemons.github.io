@@ -17,8 +17,10 @@
 // https://developer-docs.amazon.com/sp-api/docs/sandbox-environments
 
 import { spapiFetch, MARKETPLACE_IDS } from "./spapi-client.js";
+import { patch } from "./supabase-client.js";
 
 const MARKETPLACE_ID = process.env.SPAPI_MARKETPLACE_ID || MARKETPLACE_IDS.US;
+const PII_RETENTION_DAYS = 30;
 
 function requireArg(name) {
   const value = process.env[name];
@@ -59,6 +61,21 @@ async function confirmShipment({ orderId, carrierCode, trackingNumber, shipDate 
   });
 
   console.log(`Confirmed shipment for ${orderId} (${carrierCode}, tracking ${trackingNumber}).`);
+
+  const nowIso = new Date().toISOString();
+  await patch(
+    "orders",
+    { amazon_order_id: `eq.${orderId}` },
+    {
+      status: "shipped",
+      carrier_code: carrierCode,
+      tracking_number: trackingNumber,
+      shipped_at: shipDate || nowIso,
+      pii_purge_after: new Date(Date.now() + PII_RETENTION_DAYS * 24 * 60 * 60 * 1000).toISOString(),
+      updated_at: nowIso,
+    }
+  );
+  console.log(`Updated Supabase record for ${orderId}.`);
 }
 
 async function main() {

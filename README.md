@@ -13,7 +13,7 @@ These are split deliberately: GitHub Pages only serves static files, and your Am
 2. Repo **Settings → Pages** → Source: "Deploy from a branch" → pick `main` (or whichever branch) and `/ (root)`.
 3. Your site will be live at `https://<your-username>.github.io/<repo-name>/` (or your custom domain, if you add a `CNAME` file).
 
-Product photos live in `/images` (carried over from the previous version of this repo). Swap in higher-res or additional shots there whenever you have them — just update the `src` attributes in `index.html` / `products.html` to match.
+Swap in your own product photography when you have it — the pages currently hotlink your existing bottle photos from lolemons.com as placeholders (`<img src="https://lolemons.com/...">`). For a permanent setup, save real images into an `/images` folder in this repo and update the `src` attributes.
 
 The contact form posts to [Formspree](https://formspree.io) (a free form backend, since GitHub Pages has no server). Sign up, create a form, and replace `YOUR_FORM_ID` in `contact.html` with your real form ID. Until you do that, the direct email link on the same page still works.
 
@@ -45,14 +45,40 @@ Two things this version deliberately doesn't do, which you may want to add later
 - **Buyer name/address isn't pulled into the GitHub Issue.** Amazon requires a Restricted Data Token (Tokens API) to fetch PII, which adds a step. Get the address from Seller Central for now, or extend `sync-orders.js` if you want it inline.
 - **No shipping-label purchase.** This confirms shipment with a tracking number you already have (e.g. from Pirate Ship, ShipStation, or buying postage directly). If you want Amazon to generate the label too, look at the Merchant Fulfillment API (`createShipment`) — a logical next step, not included here.
 
+## 3. Set up the customer database (Supabase)
+
+Two separate tables, two separate purposes — see `supabase/schema.sql` for the full reasoning:
+
+- **`orders`** — operational fulfillment records (name/address) pulled from Amazon. Per Amazon policy, PII here gets auto-purged ~30 days after shipment by the daily purge job. No public access at all.
+- **`subscribers`** — your opt-in marketing list, populated only by people signing up on the site itself, never from Amazon order data.
+
+Setup:
+
+1. In the Supabase SQL Editor, paste and run all of `supabase/schema.sql` once.
+2. Add two more repository secrets (same place as the LWA ones): `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (from Project Settings → API). The service_role key bypasses Row Level Security, so it must never appear in any file in this repo — secrets only.
+3. The site's newsletter signup (in the footer of every page) already has the project URL and **anon** key hardcoded in `js/subscribe.js`. That's intentional and safe — the anon key can only INSERT into `subscribers`, nothing else, enforced by the RLS policy in the schema. If you ever rotate that key in Supabase, update it there too.
+
+### How the pieces fit together now
+
+- **`sync-orders.js`** (every 15 min) — pulls any FBM order that changed recently (new, shipped, or canceled — no matter *how* it shipped), upserts it into the `orders` table, and keeps a GitHub Issue per order needing fulfillment, auto-closing it once Amazon shows the order as shipped.
+- **`confirm-shipment.js`** (manual, Actions tab) — a fallback for anything shipped outside Veeqo/Seller Central's normal flow; also updates the Supabase record.
+- **`purge-old-pii.js`** (daily) — nulls out name/address on any order past its 30-day retention window.
+- **Veeqo** (if you've connected it) — handles the actual day-to-day "pull order → buy label → ship" workflow with Amazon's negotiated carrier rates, and confirms shipment with Amazon directly. `sync-orders.js` will notice that status change on its next run regardless of where it came from.
+
+
+
 ## File map
 
 ```
 index.html, products.html, about.html, contact.html   — the site
-css/styles.css, js/main.js                             — styles + small JS
+css/styles.css, js/main.js, js/subscribe.js             — styles + small JS + newsletter signup
 scripts/spapi-client.js                                 — shared SP-API client
-scripts/sync-orders.js                                  — order → GitHub Issue
-scripts/confirm-shipment.js                              — mark order shipped
+scripts/supabase-client.js                               — shared Supabase REST client (server-side)
+scripts/sync-orders.js                                  — order changes → Supabase + GitHub Issues
+scripts/confirm-shipment.js                              — manual fallback: mark order shipped
+scripts/purge-old-pii.js                                — daily PII retention cleanup
+supabase/schema.sql                                      — run once in the Supabase SQL Editor
 .github/workflows/sync-orders.yml                        — scheduled job
 .github/workflows/confirm-shipment.yml                   — manual job
+.github/workflows/purge-pii.yml                          — daily job
 ```

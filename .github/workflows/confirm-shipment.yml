@@ -49,4 +49,6 @@ jobs:
           CARRIER_CODE: ${{ inputs.carrier_code }}
           TRACKING_NUMBER: ${{ inputs.tracking_number }}
           SHIP_DATE: ${{ inputs.ship_date }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/confirm-shipment.js
