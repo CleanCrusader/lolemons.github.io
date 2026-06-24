@@ -259,7 +259,7 @@ h1, h2, h3, h4 {
 /* ---------- Product cards ---------- */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 28px;
 }
 .product-card {
@@ -292,6 +292,10 @@ h1, h2, h3, h4 {
 
 @media (max-width: 760px) {
   .product-grid { grid-template-columns: 1fr; }
+}
+
+@media (min-width: 761px) and (max-width: 980px) {
+  .product-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ---------- Benefits ---------- */
@@ -501,6 +505,25 @@ h1, h2, h3, h4 {
 @media (max-width: 760px) {
   .newsletter-strip { grid-template-columns: 1fr; }
 }
+.product-card .img-placeholder {
+  width: 100%;
+  max-height: 280px;
+  height: 220px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--cream);
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  padding: 18px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: #8a8364;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
 /* ---------- Buy Now widget (live FBA-backed checkout) ---------- */
 .stock-badge {
   font-family: var(--font-mono);
