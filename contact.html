@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact — Lots of Lemon</title>
+<meta name="description" content="Get in touch about orders, wholesale, or wholesale partnerships.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="index.html" class="brand">Lots of <em>Lemon</em></a>
+    <nav>
+      <ul class="nav-links">
+        <li><a href="index.html">Home</a></li>
+        <li><a href="products.html">Shop</a></li>
+        <li><a href="about.html">Our Story</a></li>
+        <li><a href="contact.html">Contact</a></li>
+      </ul>
+    </nav>
+    <div class="nav-cta">
+      <a href="products.html" class="btn btn-ghost">Shop Now</a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    </div>
+  </div>
+</header>
+
+<section class="page-hero">
+  <div class="wrap">
+    <span class="eyebrow">Contact</span>
+    <h1>Questions, orders, wholesale.</h1>
+    <p>Most order questions are fastest through Amazon directly. For everything else, reach us below.</p>
+  </div>
+</section>
+
+<section class="section section-cream">
+  <div class="wrap contact-grid">
+    <div>
+      <h2>Send a message</h2>
+      <p style="color:#4a4a3a; margin-bottom: 28px;">
+        This form posts to
+        <a href="https://formspree.io" style="color:var(--rust);">Formspree</a>
+        — a free form-backend service, since this site is hosted on GitHub Pages with no server of its own.
+        Replace <code>YOUR_FORM_ID</code> below with your own Formspree endpoint after signing up.
+      </p>
+      <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+        <div class="field">
+          <label for="name">Name</label>
+          <input type="text" id="name" name="name" required>
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required>
+        </div>
+        <div class="field">
+          <label for="topic">Topic</label>
+          <input type="text" id="topic" name="topic" placeholder="Order question, wholesale, press, etc.">
+        </div>
+        <div class="field">
+          <label for="message">Message</label>
+          <textarea id="message" name="message" rows="5" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Send Message</button>
+      </form>
+    </div>
+
+    <div>
+      <h2>Other ways to reach us</h2>
+      <p style="color:#4a4a3a;">
+        <strong>Email:</strong> <a href="mailto:contact@lolemons.com" style="color:var(--rust);">contact@lolemons.com</a><br><br>
+        <strong>Amazon orders:</strong> Order status, returns, and shipping for items bought on Amazon are handled fastest through your Amazon order page — go to
+        Your Orders → the order in question → Get Help.<br><br>
+        <strong>Wholesale &amp; retail partnerships:</strong> Tell us your store, expected volume, and where you're located, and we'll follow up with pricing.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <h5>Lots of Lemon</h5>
+        <p>Pure, cold-pressed lemon oil for people who'd rather clean with one real ingredient than a dozen synthetic ones.</p>
+      </div>
+      <div>
+        <h5>Shop</h5>
+        <ul>
+          <li><a href="https://www.amazon.com/dp/B0DF5Y13MZ">24oz Blend</a></li>
+          <li><a href="https://www.amazon.com/dp/B0C14RYXK2">16oz Concentrate</a></li>
+          <li><a href="https://www.amazon.com/stores/page/A264C477-7337-42CE-B6D4-EE666FE2955F">Amazon Store</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Company</h5>
+        <ul>
+          <li><a href="about.html">Our Story</a></li>
+          <li><a href="contact.html">Contact</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Support</h5>
+        <ul>
+          <li><a href="contact.html">Shipping &amp; Returns</a></li>
+          <li><a href="index.html#faq">FAQ</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Lots of Lemon LLC. All rights reserved.</span>
+      <span>Made with real lemons.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
