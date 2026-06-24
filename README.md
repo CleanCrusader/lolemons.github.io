@@ -67,18 +67,65 @@ Setup:
 
 
 
+## 4. Set up direct checkout (Stripe + Cloudflare Pages + FBA fulfillment)
+
+This is the biggest piece: customers can now buy straight from lolemons.com, paid via Stripe, shipped from your FBA stock via Amazon's Multi-Channel Fulfillment (MCF). It needs a few accounts wired together. Do these roughly in order:
+
+### Amazon side
+- Confirm your Seller Central account has API/MCF access (you're already on FBA, so no new signup is needed for MCF itself, but double check your SP-API app has the **Product Listing** role for inventory reads — no Restricted Data Token needed, stock counts aren't PII).
+- Find your real seller SKUs for both products in Seller Central → Inventory, and replace `REPLACE_WITH_24OZ_SELLER_SKU` / `REPLACE_WITH_CONCENTRATE_SELLER_SKU` in `products.html` with them.
+
+### Stripe
+1. Create a Stripe account (or use an existing one) at stripe.com.
+2. Product catalog → create two Products, one per SKU, each with a one-time Price. Note each Price ID (`price_...`).
+3. Developers → Webhooks → add an endpoint pointing at `https://yourdomain.com/api/stripe-webhook`, subscribed to `checkout.session.completed` and `checkout.session.expired`. Note the **signing secret** (`whsec_...`).
+4. Note your **secret key** (`sk_...`) from Developers → API keys. Don't paste this in chat — it goes straight into Cloudflare's secret store (next section).
+
+### Cloudflare Pages
+1. Create a Cloudflare account, then Workers & Pages → Create → Pages → **Connect to Git**, pick this repo and the branch you want live.
+2. Build settings: Framework preset **None**, build command **empty**, build output directory `/` (repo root). Cloudflare auto-detects the `/functions` folder and deploys it alongside the static site — no extra config needed.
+3. Settings → Environment variables → add these as **secrets** (encrypted, not plaintext) for the Production environment:
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+   - `SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `LWA_CLIENT_ID`, `LWA_CLIENT_SECRET`, `LWA_REFRESH_TOKEN`
+   - `SITE_URL` (e.g. `https://lolemons.com`) — used to build Stripe's success/cancel URLs
+   - `SPAPI_MARKETPLACE_ID` (optional, defaults to US)
+
+### Supabase
+- In the `inventory` table (already created by `supabase/schema.sql`), set `stripe_price_id` for each SKU row to the matching Stripe Price ID from above. `sync-inventory.js` will create the rows automatically on its first run (stock quantity only) — you just need to fill in the price ID column once per SKU.
+
+### What happens once it's all connected
+- `sync-inventory.js` (every 10 min) keeps Supabase's stock count in sync with real FBA inventory.
+- A customer clicks **Buy Now** on `products.html` → `create-checkout-session.js` atomically reserves stock and hands back a Stripe Checkout URL → they pay on Stripe's hosted page.
+- Stripe calls `stripe-webhook.js` on success → records the order in `dtc_orders`, consumes the reservation, and calls Amazon's `createFulfillmentOrder` to ship it from FBA stock.
+- If they abandon checkout, the reservation expires after 15 minutes and the stock becomes available again automatically.
+
+### Before trusting this with real money
+- Test the full flow with [Stripe test mode](https://docs.stripe.com/test-mode) and a test card before flipping to live keys.
+- The `createFulfillmentOrder` field names in `functions/api/stripe-webhook.js` follow Amazon's documented shape, but double-check them against the current [SP-API reference](https://developer-docs.amazon.com/sp-api/reference/createfulfillmentorder) / sandbox before going live — Amazon has reshaped this schema before.
+- If `npm install` fails on the `stripe` package version pinned in `package.json`, bump it to whatever's current on [npmjs.com/package/stripe](https://www.npmjs.com/package/stripe).
+
+
+
 ## File map
 
 ```
-index.html, products.html, about.html, contact.html   — the site
-css/styles.css, js/main.js, js/subscribe.js             — styles + small JS + newsletter signup
-scripts/spapi-client.js                                 — shared SP-API client
+index.html, products.html, about.html, contact.html, success.html   — the site
+css/styles.css, js/main.js, js/subscribe.js, js/buy.js   — styles + small JS + newsletter + checkout UI
+functions/api/create-checkout-session.js                — Cloudflare Function: reserves stock, creates Stripe session
+functions/api/stripe-webhook.js                         — Cloudflare Function: records order, triggers FBA fulfillment
+functions/_lib/lwa.js, functions/_lib/sb.js              — shared helpers for the above (Workers runtime)
+scripts/spapi-client.js                                 — shared SP-API client (Node/Actions runtime)
 scripts/supabase-client.js                               — shared Supabase REST client (server-side)
 scripts/sync-orders.js                                  — order changes → Supabase + GitHub Issues
+scripts/sync-inventory.js                                — FBA stock → Supabase inventory table
 scripts/confirm-shipment.js                              — manual fallback: mark order shipped
 scripts/purge-old-pii.js                                — daily PII retention cleanup
 supabase/schema.sql                                      — run once in the Supabase SQL Editor
 .github/workflows/sync-orders.yml                        — scheduled job
+.github/workflows/sync-inventory.yml                     — scheduled job
 .github/workflows/confirm-shipment.yml                   — manual job
 .github/workflows/purge-pii.yml                          — daily job
 ```

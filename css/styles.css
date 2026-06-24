@@ -501,6 +501,64 @@ h1, h2, h3, h4 {
 @media (max-width: 760px) {
   .newsletter-strip { grid-template-columns: 1fr; }
 }
+/* ---------- Buy Now widget (live FBA-backed checkout) ---------- */
+.stock-badge {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--leaf-bright);
+  margin-bottom: 10px;
+  display: block;
+}
+.stock-badge.out-of-stock { color: var(--rust); }
+.buy-widget {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.buy-widget input[type="number"] {
+  width: 64px;
+  padding: 12px 10px;
+  border-radius: var(--radius);
+  border: 1.5px solid rgba(245,196,0,0.25);
+  background: var(--ink);
+  color: var(--cream);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+.buy-widget button[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.buy-status {
+  flex: 1 0 100%;
+  font-size: 0.82rem;
+  color: var(--rust);
+  margin: 4px 0 0;
+}
+.purchase-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+  color: var(--cream-dim);
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.purchase-divider::before,
+.purchase-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(251,246,231,0.15);
+}
+
 .page-hero {
   padding: 64px 0 48px;
   border-bottom: 1px solid rgba(245,196,0,0.12);
