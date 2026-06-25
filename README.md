@@ -136,3 +136,4 @@ supabase/schema.sql                                        — run once in the S
 .github/workflows/confirm-shipment.yml                     — manual job
 .github/workflows/purge-pii.yml                            — daily job
 ```
+# Trigger redeploy: confirm latest env vars (ADMIN_SETUP_KEY, etc.) are picked up
