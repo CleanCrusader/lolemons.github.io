@@ -14,9 +14,23 @@
 
 import Stripe from "stripe";
 import { sbInsert, sbPatch, sbSelect, sbRpc } from "./lib/sb.js";
-import { spapiFetch } from "./lib/lwa.js";
+import {
+  findProductBySku,
+  ensureAmazonFulfillmentChannel,
+  ensureChannelSellable,
+  findFirstDeliveryMethodId,
+  createOrderForFulfillment,
+} from "./lib/veeqo.js";
 
 const HOLD_MINUTES = 15;
+
+// SKU -> Amazon ASIN, used only by the one-time /api/admin/setup-veeqo route
+// to link each product to the Amazon fulfillment channel in Veeqo.
+const SKU_TO_ASIN = {
+  "FV-LNLR-DPRX": "B0DF5Y13MZ",
+  "IT-3U6C-E8HZ": "B0C14RYXK2",
+  LOL1A: "B08JQFG63X",
+};
 
 function getStripe(env) {
   return new Stripe(env.STRIPE_SECRET_KEY, { httpClient: Stripe.createFetchHttpClient() });
@@ -78,40 +92,82 @@ async function handleCreateCheckoutSession(request, env) {
 }
 
 // ---------------------------------------------------------------------------
-// POST /api/stripe-webhook
+// One-time setup: GET /api/admin/setup-veeqo?key=ADMIN_SETUP_KEY
+// Links each SKU to the Amazon fulfillment channel in Veeqo. Safe to run
+// more than once — it skips anything already set up. Open the URL in a
+// browser; no curl/Postman needed.
 // ---------------------------------------------------------------------------
-async function createAmazonFulfillmentOrder(env, dtcOrder) {
-  const marketplaceId = env.SPAPI_MARKETPLACE_ID || "ATVPDKIKX0DER";
-  const items = dtcOrder.items.map((item, idx) => ({
-    sellerSku: item.sku,
-    sellerFulfillmentOrderItemId: String(idx + 1),
-    quantity: item.quantity,
-  }));
+async function handleSetupVeeqo(request, env) {
+  const url = new URL(request.url);
+  if (url.searchParams.get("key") !== env.ADMIN_SETUP_KEY) {
+    return new Response("Forbidden", { status: 403 });
+  }
 
-  const body = {
-    sellerFulfillmentOrderId: `WEB-${dtcOrder.stripe_session_id}`.slice(0, 40),
-    displayableOrderId: `WEB-${dtcOrder.id}`,
-    displayableOrderDate: new Date().toISOString(),
-    displayableOrderComment: "Thank you for your order!",
-    shippingSpeedCategory: "Standard",
-    destinationAddress: {
-      name: dtcOrder.customer_name || dtcOrder.customer_email,
-      addressLine1: dtcOrder.ship_address_line1,
-      addressLine2: dtcOrder.ship_address_line2 || undefined,
-      city: dtcOrder.ship_city,
-      stateOrRegion: dtcOrder.ship_state,
-      postalCode: dtcOrder.ship_postal_code,
-      countryCode: dtcOrder.ship_country || "US",
+  const log = [];
+  const channelId = await ensureAmazonFulfillmentChannel(env);
+  log.push(`Amazon fulfillment channel: ${channelId}`);
+
+  for (const [sku, asin] of Object.entries(SKU_TO_ASIN)) {
+    const product = await findProductBySku(env, sku);
+    if (!product) {
+      log.push(`SKU ${sku}: NOT FOUND in Veeqo's product catalog — add it there first, then re-run this.`);
+      continue;
+    }
+    await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
+    log.push(`SKU ${sku}: linked (sellable ${product.sellableId}, ASIN ${asin})`);
+  }
+
+  const deliveryMethodId = await findFirstDeliveryMethodId(env);
+  log.push(`Delivery method: ${deliveryMethodId ?? "NONE FOUND — add one in Veeqo first"}`);
+
+  return new Response(log.join("\n"), { headers: { "content-type": "text/plain" } });
+}
+
+// ---------------------------------------------------------------------------
+// Triggers fulfillment from FBA stock via Veeqo, once payment has succeeded.
+// ---------------------------------------------------------------------------
+async function createVeeqoFulfillmentOrder(env, dtcOrder) {
+  const channelId = await ensureAmazonFulfillmentChannel(env);
+  const deliveryMethodId = await findFirstDeliveryMethodId(env);
+
+  const lineItems = [];
+  for (const item of dtcOrder.items) {
+    const product = await findProductBySku(env, item.sku);
+    if (!product) {
+      throw new Error(`SKU ${item.sku} not found in Veeqo — has it been added to the catalog there?`);
+    }
+    lineItems.push({ sellable_id: product.sellableId, quantity: item.quantity });
+  }
+
+  const [firstName, ...rest] = (dtcOrder.customer_name || dtcOrder.customer_email || "Customer").split(" ");
+
+  return createOrderForFulfillment(env, {
+    channelId,
+    deliveryMethodId,
+    customer: {
+      email: dtcOrder.customer_email,
+      billing_address_attributes: {
+        first_name: firstName,
+        last_name: rest.join(" ") || firstName,
+        address1: dtcOrder.ship_address_line1,
+        address2: dtcOrder.ship_address_line2 || "",
+        city: dtcOrder.ship_city,
+        state: dtcOrder.ship_state,
+        zip: dtcOrder.ship_postal_code,
+        country: dtcOrder.ship_country || "US",
+      },
     },
-    items,
-  };
-
-  // Double-check field names against the live SP-API reference / sandbox
-  // before relying on this for real orders:
-  // https://developer-docs.amazon.com/sp-api/reference/createfulfillmentorder
-  return spapiFetch(env, "/fba/outbound/2020-07-01/fulfillmentOrders", {
-    method: "POST",
-    body: { marketplaceId, ...body },
+    deliverTo: {
+      first_name: firstName,
+      last_name: rest.join(" ") || firstName,
+      address1: dtcOrder.ship_address_line1,
+      address2: dtcOrder.ship_address_line2 || "",
+      city: dtcOrder.ship_city,
+      state: dtcOrder.ship_state,
+      zip: dtcOrder.ship_postal_code,
+      country: dtcOrder.ship_country || "US",
+    },
+    lineItems,
   });
 }
 
@@ -146,19 +202,19 @@ async function handleCompleted(env, stripe, session) {
   const order = Array.isArray(dtcOrderResult) ? dtcOrderResult[0] : dtcOrderResult;
 
   try {
-    const fulfillment = await createAmazonFulfillmentOrder(env, order);
+    const fulfillment = await createVeeqoFulfillmentOrder(env, order);
     await sbPatch(
       env,
       "dtc_orders",
       { stripe_session_id: `eq.${session.id}` },
       {
         status: "fulfilling",
-        amazon_fulfillment_order_id: fulfillment?.payload?.fulfillmentOrderId || null,
+        amazon_fulfillment_order_id: fulfillment?.id ? String(fulfillment.id) : null,
         updated_at: new Date().toISOString(),
       }
     );
   } catch (err) {
-    console.error("Amazon MCF fulfillment order failed:", err);
+    console.error("Veeqo fulfillment order failed:", err);
     await sbPatch(
       env,
       "dtc_orders",
@@ -208,6 +264,10 @@ async function handleStripeWebhook(request, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    if (url.pathname === "/api/admin/setup-veeqo" && request.method === "GET") {
+      return handleSetupVeeqo(request, env);
+    }
 
     if (url.pathname === "/api/create-checkout-session" && request.method === "POST") {
       return handleCreateCheckoutSession(request, env);

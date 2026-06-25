@@ -1,12 +1,13 @@
 name: Confirm Amazon Shipment
 
-# Manually triggered from the Actions tab. Fill in the order ID, carrier,
-# and tracking number, and this marks the order shipped on Amazon.
+# NOTE: this calls Amazon's SP-API directly, which needs your own LWA
+# developer credentials — not currently available, so this will fail if
+# run as-is. It's manual-trigger only, so it won't spam failures on a
+# schedule; it's just not usable yet. Veeqo's own "ship" flow doesn't need
+# this at all for orders placed on Amazon's marketplace.
 #
-# Required repo secrets (Settings > Secrets and variables > Actions):
-#   LWA_CLIENT_ID
-#   LWA_CLIENT_SECRET
-#   LWA_REFRESH_TOKEN
+# Required repo secrets: LWA_CLIENT_ID, LWA_CLIENT_SECRET, LWA_REFRESH_TOKEN,
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 on:
   workflow_dispatch:

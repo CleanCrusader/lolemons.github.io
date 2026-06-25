@@ -1,18 +1,19 @@
 name: Sync Amazon Orders
 
-# Runs on a schedule to pull new unshipped FBM orders from Amazon and file a
-# GitHub Issue for each one. Also runnable manually from the Actions tab.
+# PAUSED: this calls Amazon's SP-API directly, which needs your own LWA
+# developer credentials. Since those aren't available, the scheduled
+# trigger below is commented out so this doesn't fail (and spam
+# notifications) every 15 minutes. Veeqo's own dashboard already shows
+# your Amazon orders — including FBM ones — natively, since it's connected
+# to your Amazon account. Use that instead of this for day-to-day order
+# tracking. Re-enable the schedule below if you get LWA access later.
 #
-# Required repo secrets (Settings > Secrets and variables > Actions):
-#   LWA_CLIENT_ID
-#   LWA_CLIENT_SECRET
-#   LWA_REFRESH_TOKEN
-# Optional repo variable:
-#   SPAPI_MARKETPLACE_ID   (defaults to US: ATVPDKIKX0DER)
+# Required repo secrets: LWA_CLIENT_ID, LWA_CLIENT_SECRET, LWA_REFRESH_TOKEN,
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 on:
-  schedule:
-    - cron: "*/15 * * * *" # every 15 minutes
+  # schedule:
+  #   - cron: "*/15 * * * *" # every 15 minutes
   workflow_dispatch: {}
 
 permissions:

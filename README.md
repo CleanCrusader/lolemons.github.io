@@ -17,26 +17,15 @@ Swap in your own product photography when you have it — the pages currently ho
 
 The contact form posts to [Formspree](https://formspree.io) (a free form backend, since GitHub Pages has no server). Sign up, create a form, and replace `YOUR_FORM_ID` in `contact.html` with your real form ID. Until you do that, the direct email link on the same page still works.
 
-## 2. Set up Amazon order automation
+## 2. Amazon order automation (currently paused)
 
-You said you already have SP-API credentials. You'll need three values from your Login with Amazon (LWA) app in Seller Central → Apps & Services → Develop Apps:
+This section describes `scripts/sync-orders.js` and `scripts/confirm-shipment.js`, which call Amazon's SP-API directly to track and confirm FBM orders. **These need your own Amazon developer (LWA) credentials, which aren't available right now** — so their schedules are paused (see the comments at the top of each workflow file). Veeqo's own dashboard already shows your Amazon orders, FBA and FBM alike, since it's connected to your Amazon account — use that for day-to-day order tracking instead.
 
-- `LWA_CLIENT_ID`
-- `LWA_CLIENT_SECRET`
-- `LWA_REFRESH_TOKEN` (generated when you authorized the app against your seller account)
+If you ever do get LWA credentials (registering a developer app in Seller Central → Apps & Services → Develop Apps), here's what they enable:
 
-Add these as **repository secrets**: repo **Settings → Secrets and variables → Actions → New repository secret**.
+- `LWA_CLIENT_ID`, `LWA_CLIENT_SECRET`, `LWA_REFRESH_TOKEN` (the refresh token comes from authorizing the app against your seller account) as repo secrets re-enable **Sync Amazon Orders** (opens a GitHub Issue per unshipped order) and **Confirm Amazon Shipment** (manual workflow to mark an order shipped with tracking info). Uncomment the `schedule:` block in `sync-orders.yml` once these are set.
 
-If you sell outside the US marketplace, also add a repository **variable** (not secret) called `SPAPI_MARKETPLACE_ID` with the right marketplace ID (see `MARKETPLACE_IDS` in `scripts/spapi-client.js` for a few common ones, or look yours up in the SP-API docs).
-
-### What the two workflows do
-
-- **Sync Amazon Orders** (`.github/workflows/sync-orders.yml`) — runs every 15 minutes, asks Amazon for unshipped FBM orders from the last 48 hours, and opens a GitHub Issue (labeled `amazon-order`, `needs-fulfillment`) for each new one. This is your order inbox — no database needed.
-- **Confirm Amazon Shipment** (`.github/workflows/confirm-shipment.yml`) — manual only. Go to the **Actions** tab → "Confirm Amazon Shipment" → "Run workflow", fill in the order ID + carrier + tracking number, and it marks the order shipped on Amazon.
-
-Both run as plain Node scripts (`scripts/sync-orders.js`, `scripts/confirm-shipment.js`) against a small shared client (`scripts/spapi-client.js`) that handles the LWA token exchange. No AWS SigV4 signing needed — Amazon dropped that requirement in October 2023.
-
-### Before you rely on this for real orders
+### Before relying on this for real orders
 
 The `confirmShipment` request body in `scripts/confirm-shipment.js` follows Amazon's documented shape, but Amazon has changed nested field names across API versions before. **Test it against the [SP-API sandbox](https://developer-docs.amazon.com/sp-api/docs/sandbox-environments) first**, and run "Confirm Amazon Shipment" once against a real low-stakes order before trusting it on a busy day.
 
@@ -71,9 +60,20 @@ Setup:
 
 This is the biggest piece: customers can now buy straight from lolemons.com, paid via Stripe, shipped from your FBA stock via Amazon's Multi-Channel Fulfillment (MCF). It needs a few accounts wired together. Do these roughly in order:
 
-### Amazon side
-- Confirm your Seller Central account has API/MCF access (you're already on FBA, so no new signup is needed for MCF itself, but double check your SP-API app has the **Product Listing** role for inventory reads — no Restricted Data Token needed, stock counts aren't PII).
-- Real seller SKUs are already wired in for all three products (`FV-LNLR-DPRX`, `IT-3U6C-E8HZ`, `LOL1A`).
+### Fulfillment: Veeqo, not direct Amazon access
+
+Getting your own Amazon SP-API developer credentials (LWA) requires registering a developer app in Seller Central — a real hurdle if you're not building software for a living. Since Veeqo already has a connection to your Amazon account (the "Continue with Amazon" you set up earlier), this uses Veeqo's API instead for both inventory and fulfillment. Veeqo routes fulfillment to Amazon's Multi-Channel Fulfillment (MCF) on your behalf — you never touch Amazon's developer side at all.
+
+1. **Get a Veeqo API key**: in the Veeqo app, go to your user (or create a "+ New Employee" if you want a dedicated one for this integration) → look for an API Key section → generate one. If you don't see that option, message Veeqo support (helpme@support.veeqo.com or the in-app chat) and ask them to enable API access on your account first — this is a quick request, not a developer application process.
+2. **Make sure all 3 products exist in Veeqo's own catalog** with the SKUs matching exactly: `FV-LNLR-DPRX`, `IT-3U6C-E8HZ`, `LOL1A`. If Veeqo pulled your Amazon listings in automatically when you connected it, they're probably already there — check Inventory in the Veeqo app.
+3. **Make sure at least one delivery method exists** in Veeqo (Settings → Delivery Methods) — any one is fine, the setup script below just grabs the first one it finds.
+4. Add `VEEQO_API_KEY` as a Cloudflare secret (same place as the others), plus a new one called `ADMIN_SETUP_KEY` — make up any random password-like string for this one, it's just there to stop strangers from triggering setup.
+5. Once deployed, visit `https://<your-site>/api/admin/setup-veeqo?key=<whatever you set ADMIN_SETUP_KEY to>` in your browser. This is a one-time step (safe to re-run) that links your 3 products to a special "Amazon fulfillment" channel inside Veeqo. You'll see a plain-text log confirming what it did — if a SKU shows "NOT FOUND," it means step 2 still needs doing.
+6. Also add `VEEQO_API_KEY` as a **GitHub** repo secret (Settings → Secrets and variables → Actions) — `sync-inventory.js` needs it there too, to keep the site's stock display current.
+
+One honest caveat: I built this against Veeqo's published API docs but can't call their API directly to test it from where I'm working, so a couple of field names (exactly how stock totals come back, the order-creation shape) are my best reading of their docs rather than something I've verified live. Worth keeping an eye on the Cloudflare deployment logs after your first real test order, in case a field name needs a small adjustment.
+
+**What this means for the earlier Amazon-order-tracking automation**: `sync-orders.yml` (GitHub Issues per unshipped order) and `confirm-shipment.yml` both call Amazon's SP-API directly too, so they're paused for the same reason — and honestly, Veeqo's own dashboard already does that job, since it can see all your Amazon orders (FBA and FBM) natively. Worth just using Veeqo for that day-to-day work instead.
 
 ### Stripe
 1. Create a Stripe account (or use an existing one) at stripe.com.
@@ -94,9 +94,9 @@ Setup:
    - `STRIPE_WEBHOOK_SECRET`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `LWA_CLIENT_ID`, `LWA_CLIENT_SECRET`, `LWA_REFRESH_TOKEN`
+   - `VEEQO_API_KEY`
+   - `ADMIN_SETUP_KEY` (any random string you make up)
    - `SITE_URL` — your `.workers.dev` URL for testing, swap to `https://lolemons.com` once on a custom domain
-   - `SPAPI_MARKETPLACE_ID` (optional, defaults to US)
 3. Push/merge triggers a redeploy automatically (Workers Builds, Cloudflare's built-in CI). Check the Deployments tab for build logs if something doesn't show up.
 
 ### Supabase
@@ -105,12 +105,12 @@ Setup:
 ### What happens once it's all connected
 - `sync-inventory.js` (every 10 min) keeps Supabase's stock count in sync with real FBA inventory.
 - A customer clicks **Buy Now** on `products.html` → `src/worker.js` atomically reserves stock and hands back a Stripe Checkout URL → they pay on Stripe's hosted page.
-- Stripe calls the webhook route on success → records the order in `dtc_orders`, consumes the reservation, and calls Amazon's `createFulfillmentOrder` to ship it from FBA stock.
+- Stripe calls the webhook route on success → records the order in `dtc_orders`, consumes the reservation, and creates an order in Veeqo on a dedicated "Amazon fulfillment" channel — Veeqo then routes it to FBA via MCF on your behalf.
 - If they abandon checkout, the reservation expires after 15 minutes and the stock becomes available again automatically.
 
 ### Before trusting this with real money
 - Test the full flow with [Stripe test mode](https://docs.stripe.com/test-mode) and a test card before flipping to live keys.
-- The `createFulfillmentOrder` field names in `functions/api/stripe-webhook.js` follow Amazon's documented shape, but double-check them against the current [SP-API reference](https://developer-docs.amazon.com/sp-api/reference/createfulfillmentorder) / sandbox before going live — Amazon has reshaped this schema before.
+- The order-creation shape in `src/lib/veeqo.js` follows Veeqo's published docs, but I haven't been able to call their API directly to verify it live — double-check the response after your first real test order, and adjust field names if anything comes back unexpected.
 - If `npm install` fails on the `stripe` package version pinned in `package.json`, bump it to whatever's current on [npmjs.com/package/stripe](https://www.npmjs.com/package/stripe).
 
 
@@ -123,7 +123,7 @@ css/styles.css, js/main.js, js/subscribe.js, js/buy.js   — styles + small JS +
 wrangler.jsonc                                            — Cloudflare Worker config (assets + routing)
 .assetsignore                                             — keeps source/server files out of the public site
 src/worker.js                                             — Worker entry: routes /api/* , serves everything else as static
-src/lib/lwa.js, src/lib/sb.js                             — shared helpers for the above (Workers runtime)
+src/lib/sb.js, src/lib/veeqo.js                           — shared helpers for the above (Workers runtime)
 scripts/spapi-client.js                                   — shared SP-API client (Node/Actions runtime)
 scripts/supabase-client.js                                 — shared Supabase REST client (server-side)
 scripts/sync-orders.js                                    — order changes → Supabase + GitHub Issues

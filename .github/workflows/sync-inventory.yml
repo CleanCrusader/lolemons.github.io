@@ -2,11 +2,11 @@ name: Sync FBA Inventory
 
 # Keeps Supabase's `inventory` table (which the site reads for in/out-of-
 # stock display, and the checkout function reserves against) in sync with
-# real FBA stock. Runs frequently since this is what stands between a
-# customer and an oversold item.
+# stock Veeqo shows for each SKU — which itself stays synced with FBA via
+# Veeqo's own Amazon connection. Runs frequently since this is what stands
+# between a customer and an oversold item.
 #
-# Required repo secrets: LWA_CLIENT_ID, LWA_CLIENT_SECRET, LWA_REFRESH_TOKEN,
-# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+# Required repo secrets: VEEQO_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
 on:
   schedule:
@@ -30,10 +30,7 @@ jobs:
 
       - name: Sync inventory
         env:
-          LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
-          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
-          LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
-          SPAPI_MARKETPLACE_ID: ${{ vars.SPAPI_MARKETPLACE_ID }}
+          VEEQO_API_KEY: ${{ secrets.VEEQO_API_KEY }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: node scripts/sync-inventory.js

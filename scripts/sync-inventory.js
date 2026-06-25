@@ -1,59 +1,78 @@
 // scripts/sync-inventory.js
 //
-// Polls Amazon's FBA Inventory API for fulfillable stock and upserts it
-// into Supabase's `inventory` table — the same table the site's "Buy"
-// button reads from (public, read-only) and the checkout function reserves
-// against. This is plain stock-count data, not PII, so no Restricted Data
-// Token or special role is needed beyond the Product Listing role.
+// Keeps Supabase's `inventory` table in sync with stock Veeqo already
+// shows for each SKU — which itself stays in sync with FBA, since Veeqo
+// owns that connection to your Amazon account. This avoids needing your
+// own Amazon developer app (LWA credentials) just to read stock counts.
 //
 // Run via .github/workflows/sync-inventory.yml.
+//
+// Required env: VEEQO_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
-import { spapiFetch, MARKETPLACE_IDS } from "./spapi-client.js";
 import { upsert } from "./supabase-client.js";
 
-const MARKETPLACE_ID = process.env.SPAPI_MARKETPLACE_ID || MARKETPLACE_IDS.US;
+const VEEQO_BASE = "https://api.veeqo.com";
 
-async function fetchAllSummaries() {
-  let nextToken;
-  const summaries = [];
+// Keep this in sync with the SKU_TO_ASIN map in src/worker.js.
+const SKUS = ["FV-LNLR-DPRX", "IT-3U6C-E8HZ", "LOL1A"];
 
-  do {
-    const data = await spapiFetch("/fba/inventory/v1/summaries", {
-      query: {
-        details: "true",
-        granularityType: "Marketplace",
-        granularityId: MARKETPLACE_ID,
-        marketplaceIds: MARKETPLACE_ID,
-        ...(nextToken ? { nextToken } : {}),
-      },
-    });
-    const payload = data?.payload || {};
-    summaries.push(...(payload.inventorySummaries || []));
-    nextToken = data?.pagination?.nextToken;
-  } while (nextToken);
+async function veeqoFetch(path) {
+  const res = await fetch(`${VEEQO_BASE}${path}`, {
+    headers: {
+      "x-api-key": process.env.VEEQO_API_KEY,
+      accept: "application/json",
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`Veeqo GET ${path} failed (${res.status}): ${await res.text()}`);
+  }
+  return res.json();
+}
 
-  return summaries;
+async function fetchAllProducts() {
+  let page = 1;
+  const perPage = 100;
+  const products = [];
+
+  while (page <= 20) {
+    const batch = await veeqoFetch(`/products?page_size=${perPage}&page=${page}`);
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    products.push(...batch);
+    page += 1;
+  }
+  return products;
 }
 
 async function main() {
-  const summaries = await fetchAllSummaries();
-  console.log(`Fetched ${summaries.length} FBA inventory summary row(s).`);
+  const products = await fetchAllProducts();
 
-  if (summaries.length === 0) {
+  const bySku = new Map();
+  for (const product of products) {
+    for (const sellable of product.sellables || []) {
+      if (SKUS.includes(sellable.sku_code)) {
+        bySku.set(sellable.sku_code, {
+          sku: sellable.sku_code,
+          asin: null, // Veeqo's product response doesn't reliably include this
+          available_quantity: product.total_available_stock_level ?? 0,
+          updated_at: new Date().toISOString(),
+        });
+      }
+    }
+  }
+
+  const rows = Array.from(bySku.values());
+  console.log(`Found ${rows.length} of ${SKUS.length} expected SKU(s) in Veeqo's catalog.`);
+
+  const missing = SKUS.filter((sku) => !bySku.has(sku));
+  if (missing.length > 0) {
+    console.warn(`Not found in Veeqo: ${missing.join(", ")} — add these products there first.`);
+  }
+
+  if (rows.length === 0) {
     console.log("Nothing to sync.");
     return;
   }
 
-  const rows = summaries.map((item) => ({
-    sku: item.sellerSku,
-    asin: item.asin,
-    available_quantity: item.inventoryDetails?.fulfillableQuantity ?? 0,
-    updated_at: new Date().toISOString(),
-  }));
-
-  // Upsert without on_conflict overwriting stripe_price_id — PostgREST's
-  // merge-duplicates resolution only touches the columns we send, so an
-  // existing stripe_price_id value for a SKU is left alone.
   await upsert("inventory", rows, "sku");
   console.log(`Synced ${rows.length} SKU(s) into Supabase inventory table.`);
 }
