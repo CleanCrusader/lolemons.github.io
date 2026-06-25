@@ -1,0 +1,58 @@
+# lolemons.com
+#
+# Default posture: open. No file at all would mean "allow everything"
+# anyway — this exists to make that decision explicit and documented,
+# and to point crawlers at the sitemap.
+#
+# AI crawlers come in two flavors with opposite purposes:
+#   - Training crawlers (GPTBot, ClaudeBot, CCBot, Google-Extended,
+#     Applebot-Extended) feed model training data.
+#   - Search/retrieval crawlers (OAI-SearchBot, ChatGPT-User,
+#     PerplexityBot, Claude-SearchBot, Claude-Web, anthropic-ai) fetch
+#     live content to answer a specific user's question in the moment.
+#
+# Blocking the search/retrieval bots removes this site from AI-generated
+# answers entirely. Both categories are left open below — for a small
+# consumer brand, being discoverable (and appearing in AI training data
+# for brand recall) outweighs the downside. Revisit this anytime; it's a
+# deliberate choice, not a default.
+
+User-agent: *
+Allow: /
+
+# Search/retrieval (citation-driving) — explicitly allowed
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Training crawlers — also allowed (see note above)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://lolemons.com/sitemap.xml
