@@ -1,0 +1,55 @@
+name: Confirm Amazon Shipment
+
+# NOTE: this calls Amazon's SP-API directly, which needs your own LWA
+# developer credentials — not currently available, so this will fail if
+# run as-is. It's manual-trigger only, so it won't spam failures on a
+# schedule; it's just not usable yet. Veeqo's own "ship" flow doesn't need
+# this at all for orders placed on Amazon's marketplace.
+#
+# Required repo secrets: LWA_CLIENT_ID, LWA_CLIENT_SECRET, LWA_REFRESH_TOKEN,
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+on:
+  workflow_dispatch:
+    inputs:
+      order_id:
+        description: "Amazon order ID (3-7-7 format)"
+        required: true
+      carrier_code:
+        description: "Carrier code (e.g. USPS, UPS, FedEx, DHL)"
+        required: true
+      tracking_number:
+        description: "Tracking number"
+        required: true
+      ship_date:
+        description: "Ship date (ISO 8601, optional — defaults to now)"
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  confirm-shipment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Confirm shipment
+        env:
+          LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+          LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
+          SPAPI_MARKETPLACE_ID: ${{ vars.SPAPI_MARKETPLACE_ID }}
+          ORDER_ID: ${{ inputs.order_id }}
+          CARRIER_CODE: ${{ inputs.carrier_code }}
+          TRACKING_NUMBER: ${{ inputs.tracking_number }}
+          SHIP_DATE: ${{ inputs.ship_date }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/confirm-shipment.js

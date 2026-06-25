@@ -1,0 +1,14 @@
+node_modules
+.git
+.github
+.wrangler
+.dev.vars*
+scripts
+src
+supabase
+package.json
+package-lock.json
+README.md
+wrangler.jsonc
+.gitignore
+.nojekyll

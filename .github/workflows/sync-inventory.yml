@@ -1,0 +1,36 @@
+name: Sync FBA Inventory
+
+# Keeps Supabase's `inventory` table (which the site reads for in/out-of-
+# stock display, and the checkout function reserves against) in sync with
+# stock Veeqo shows for each SKU — which itself stays synced with FBA via
+# Veeqo's own Amazon connection. Runs frequently since this is what stands
+# between a customer and an oversold item.
+#
+# Required repo secrets: VEEQO_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+on:
+  schedule:
+    - cron: "*/10 * * * *" # every 10 minutes
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  sync-inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Sync inventory
+        env:
+          VEEQO_API_KEY: ${{ secrets.VEEQO_API_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-inventory.js

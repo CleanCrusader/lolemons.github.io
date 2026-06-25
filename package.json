@@ -1,0 +1,22 @@
+{
+  "name": "lolemons-amazon-fulfillment",
+  "version": "1.0.0",
+  "private": true,
+  "description": "GitHub Actions automation (Amazon FBM/FBA sync) + Cloudflare Pages Functions (Stripe checkout) for lolemons.com.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "sync-orders": "node scripts/sync-orders.js",
+    "sync-inventory": "node scripts/sync-inventory.js",
+    "confirm-shipment": "node scripts/confirm-shipment.js",
+    "purge-old-pii": "node scripts/purge-old-pii.js"
+  },
+  "dependencies": {
+    "stripe": "^18.0.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.20.0"
+  }
+}

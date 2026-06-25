@@ -1,0 +1,44 @@
+name: Sync Amazon Orders
+
+# PAUSED: this calls Amazon's SP-API directly, which needs your own LWA
+# developer credentials. Since those aren't available, the scheduled
+# trigger below is commented out so this doesn't fail (and spam
+# notifications) every 15 minutes. Veeqo's own dashboard already shows
+# your Amazon orders — including FBM ones — natively, since it's connected
+# to your Amazon account. Use that instead of this for day-to-day order
+# tracking. Re-enable the schedule below if you get LWA access later.
+#
+# Required repo secrets: LWA_CLIENT_ID, LWA_CLIENT_SECRET, LWA_REFRESH_TOKEN,
+# SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+
+on:
+  # schedule:
+  #   - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  contents: read
+
+jobs:
+  sync-orders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run sync
+        env:
+          LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+          LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
+          SPAPI_MARKETPLACE_ID: ${{ vars.SPAPI_MARKETPLACE_ID }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: node scripts/sync-orders.js
