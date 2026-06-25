@@ -61,12 +61,24 @@ async function main() {
   }
 
   const rows = Array.from(bySku.values());
-  console.log(`Found ${rows.length} of ${SKUS.length} expected SKU(s) in Veeqo's catalog.`);
-
   const missing = SKUS.filter((sku) => !bySku.has(sku));
+
   if (missing.length > 0) {
-    console.warn(`Not found in Veeqo: ${missing.join(", ")} — add these products there first.`);
+    // A SKU can be "missing" for two different reasons: it was never added
+    // to Veeqo's catalog (a real setup gap), or it went inactive/unlinked
+    // on Amazon (e.g. temporarily out of stock) and Veeqo stopped
+    // returning it. Either way, the safe default is to show it as
+    // out-of-stock on the site rather than silently keeping the last
+    // known quantity — that's what was actually happening before this
+    // fix, and it's wrong: a product that's gone inactive on Amazon could
+    // otherwise keep showing as purchasable indefinitely.
+    console.warn(`Not found in Veeqo (or inactive): ${missing.join(", ")} — marking as out-of-stock.`);
+    for (const sku of missing) {
+      rows.push({ sku, asin: null, available_quantity: 0, updated_at: new Date().toISOString() });
+    }
   }
+
+  console.log(`Found ${bySku.size} of ${SKUS.length} expected SKU(s) active in Veeqo's catalog.`);
 
   if (rows.length === 0) {
     console.log("Nothing to sync.");
