@@ -1,0 +1,41 @@
+name: Sync Prices from Amazon
+
+# Daily price check. Reads each SKU's price as synced into Veeqo from the
+# native Amazon channel, and if it's changed: creates a new Stripe Price,
+# updates Supabase, and commits the new price into products.html (both
+# the visible tag and the structured data) directly to main.
+#
+# Required repo secrets: VEEQO_API_KEY, STRIPE_SECRET_KEY, SUPABASE_URL,
+# SUPABASE_SERVICE_ROLE_KEY
+
+on:
+  schedule:
+    - cron: "0 13 * * *" # once daily, 1pm UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Sync prices
+        env:
+          VEEQO_API_KEY: ${{ secrets.VEEQO_API_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/sync-prices.js

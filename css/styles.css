@@ -516,6 +516,12 @@ h1, h2, h3, h4 {
   letter-spacing: 0.05em;
 }
 
+.product-card .price-amount {
+  font-family: var(--font-mono);
+  color: var(--cream-dim);
+  font-size: 0.92rem;
+}
+
 /* ---------- Buy Now widget (live FBA-backed checkout) ---------- */
 .stock-badge {
   font-family: var(--font-mono);
