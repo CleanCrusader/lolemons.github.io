@@ -67,39 +67,45 @@ Setup:
 
 
 
-## 4. Set up direct checkout (Stripe + Cloudflare Pages + FBA fulfillment)
+## 4. Set up direct checkout (Stripe + Cloudflare Workers + FBA fulfillment)
 
 This is the biggest piece: customers can now buy straight from lolemons.com, paid via Stripe, shipped from your FBA stock via Amazon's Multi-Channel Fulfillment (MCF). It needs a few accounts wired together. Do these roughly in order:
 
 ### Amazon side
 - Confirm your Seller Central account has API/MCF access (you're already on FBA, so no new signup is needed for MCF itself, but double check your SP-API app has the **Product Listing** role for inventory reads — no Restricted Data Token needed, stock counts aren't PII).
-- Find your real seller SKUs for both products in Seller Central → Inventory, and replace `REPLACE_WITH_24OZ_SELLER_SKU` / `REPLACE_WITH_CONCENTRATE_SELLER_SKU` in `products.html` with them.
+- Real seller SKUs are already wired in for all three products (`FV-LNLR-DPRX`, `IT-3U6C-E8HZ`, `LOL1A`).
 
 ### Stripe
 1. Create a Stripe account (or use an existing one) at stripe.com.
-2. Product catalog → create two Products, one per SKU, each with a one-time Price. Note each Price ID (`price_...`).
+2. Product catalog → create one Product per SKU, each with a one-time Price. Note each Price ID (`price_...`).
 3. Developers → Webhooks → add an endpoint pointing at `https://yourdomain.com/api/stripe-webhook`, subscribed to `checkout.session.completed` and `checkout.session.expired`. Note the **signing secret** (`whsec_...`).
 4. Note your **secret key** (`sk_...`) from Developers → API keys. Don't paste this in chat — it goes straight into Cloudflare's secret store (next section).
 
-### Cloudflare Pages
-1. Create a Cloudflare account, then Workers & Pages → Create → Pages → **Connect to Git**, pick this repo and the branch you want live.
-2. Build settings: Framework preset **None**, build command **empty**, build output directory `/` (repo root). Cloudflare auto-detects the `/functions` folder and deploys it alongside the static site — no extra config needed.
-3. Settings → Environment variables → add these as **secrets** (encrypted, not plaintext) for the Production environment:
+### Cloudflare Workers (not classic "Pages")
+Cloudflare is consolidating Pages into Workers — connecting a repo through the dashboard today creates a **Worker with static assets**, not a classic Pages project, and it does *not* auto-detect a `/functions` folder the way Pages used to. This repo is set up for that model directly:
+
+- `wrangler.jsonc` — the Worker config: serves everything in the repo as static assets *except* what's listed in `.assetsignore` (source/server files), and routes `/api/*` specifically to `src/worker.js` via `run_worker_first` — everything else is served as a static file without invoking any Worker code at all.
+- `src/worker.js` — the single entry point handling both `/api/create-checkout-session` and `/api/stripe-webhook`.
+
+Setup:
+1. Workers & Pages → your project → **Settings → Build** (or Git settings) → confirm/set the connected branch. **This matters a lot**: whichever branch is connected is what actually deploys — if it's `main`, it won't reflect anything in this PR until merged.
+2. Settings → **Variables and Secrets** → add these as **Secret** type (do this for both Production and Preview environments if shown separately):
    - `STRIPE_SECRET_KEY`
    - `STRIPE_WEBHOOK_SECRET`
    - `SUPABASE_URL`
    - `SUPABASE_SERVICE_ROLE_KEY`
    - `LWA_CLIENT_ID`, `LWA_CLIENT_SECRET`, `LWA_REFRESH_TOKEN`
-   - `SITE_URL` (e.g. `https://lolemons.com`) — used to build Stripe's success/cancel URLs
+   - `SITE_URL` — your `.workers.dev` URL for testing, swap to `https://lolemons.com` once on a custom domain
    - `SPAPI_MARKETPLACE_ID` (optional, defaults to US)
+3. Push/merge triggers a redeploy automatically (Workers Builds, Cloudflare's built-in CI). Check the Deployments tab for build logs if something doesn't show up.
 
 ### Supabase
 - In the `inventory` table (already created by `supabase/schema.sql`), set `stripe_price_id` for each SKU row to the matching Stripe Price ID from above. `sync-inventory.js` will create the rows automatically on its first run (stock quantity only) — you just need to fill in the price ID column once per SKU.
 
 ### What happens once it's all connected
 - `sync-inventory.js` (every 10 min) keeps Supabase's stock count in sync with real FBA inventory.
-- A customer clicks **Buy Now** on `products.html` → `create-checkout-session.js` atomically reserves stock and hands back a Stripe Checkout URL → they pay on Stripe's hosted page.
-- Stripe calls `stripe-webhook.js` on success → records the order in `dtc_orders`, consumes the reservation, and calls Amazon's `createFulfillmentOrder` to ship it from FBA stock.
+- A customer clicks **Buy Now** on `products.html` → `src/worker.js` atomically reserves stock and hands back a Stripe Checkout URL → they pay on Stripe's hosted page.
+- Stripe calls the webhook route on success → records the order in `dtc_orders`, consumes the reservation, and calls Amazon's `createFulfillmentOrder` to ship it from FBA stock.
 - If they abandon checkout, the reservation expires after 15 minutes and the stock becomes available again automatically.
 
 ### Before trusting this with real money
@@ -114,18 +120,19 @@ This is the biggest piece: customers can now buy straight from lolemons.com, pai
 ```
 index.html, products.html, about.html, contact.html, success.html   — the site
 css/styles.css, js/main.js, js/subscribe.js, js/buy.js   — styles + small JS + newsletter + checkout UI
-functions/api/create-checkout-session.js                — Cloudflare Function: reserves stock, creates Stripe session
-functions/api/stripe-webhook.js                         — Cloudflare Function: records order, triggers FBA fulfillment
-functions/_lib/lwa.js, functions/_lib/sb.js              — shared helpers for the above (Workers runtime)
-scripts/spapi-client.js                                 — shared SP-API client (Node/Actions runtime)
-scripts/supabase-client.js                               — shared Supabase REST client (server-side)
-scripts/sync-orders.js                                  — order changes → Supabase + GitHub Issues
-scripts/sync-inventory.js                                — FBA stock → Supabase inventory table
-scripts/confirm-shipment.js                              — manual fallback: mark order shipped
-scripts/purge-old-pii.js                                — daily PII retention cleanup
-supabase/schema.sql                                      — run once in the Supabase SQL Editor
-.github/workflows/sync-orders.yml                        — scheduled job
-.github/workflows/sync-inventory.yml                     — scheduled job
-.github/workflows/confirm-shipment.yml                   — manual job
-.github/workflows/purge-pii.yml                          — daily job
+wrangler.jsonc                                            — Cloudflare Worker config (assets + routing)
+.assetsignore                                             — keeps source/server files out of the public site
+src/worker.js                                             — Worker entry: routes /api/* , serves everything else as static
+src/lib/lwa.js, src/lib/sb.js                             — shared helpers for the above (Workers runtime)
+scripts/spapi-client.js                                   — shared SP-API client (Node/Actions runtime)
+scripts/supabase-client.js                                 — shared Supabase REST client (server-side)
+scripts/sync-orders.js                                    — order changes → Supabase + GitHub Issues
+scripts/sync-inventory.js                                 — FBA stock → Supabase inventory table
+scripts/confirm-shipment.js                                — manual fallback: mark order shipped
+scripts/purge-old-pii.js                                  — daily PII retention cleanup
+supabase/schema.sql                                        — run once in the Supabase SQL Editor
+.github/workflows/sync-orders.yml                          — scheduled job
+.github/workflows/sync-inventory.yml                       — scheduled job
+.github/workflows/confirm-shipment.yml                     — manual job
+.github/workflows/purge-pii.yml                            — daily job
 ```
