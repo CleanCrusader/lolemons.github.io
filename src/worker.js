@@ -265,16 +265,25 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    if (url.pathname === "/api/admin/setup-veeqo" && request.method === "GET") {
-      return handleSetupVeeqo(request, env);
-    }
+    try {
+      if (url.pathname === "/api/admin/setup-veeqo" && request.method === "GET") {
+        return await handleSetupVeeqo(request, env);
+      }
 
-    if (url.pathname === "/api/create-checkout-session" && request.method === "POST") {
-      return handleCreateCheckoutSession(request, env);
-    }
+      if (url.pathname === "/api/create-checkout-session" && request.method === "POST") {
+        return await handleCreateCheckoutSession(request, env);
+      }
 
-    if (url.pathname === "/api/stripe-webhook" && request.method === "POST") {
-      return handleStripeWebhook(request, env);
+      if (url.pathname === "/api/stripe-webhook" && request.method === "POST") {
+        return await handleStripeWebhook(request, env);
+      }
+    } catch (err) {
+      console.error(`Error handling ${url.pathname}:`, err);
+      // Surfaced here deliberately while we're still in test mode, so
+      // failures are debuggable without needing direct log access.
+      // Worth tightening to a generic message before going fully live,
+      // so internal error details aren't exposed to real customers.
+      return Response.json({ error: "internal_error", message: String(err?.message || err) }, { status: 500 });
     }
 
     if (url.pathname.startsWith("/api/")) {

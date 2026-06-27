@@ -84,7 +84,10 @@ async function startCheckout(card) {
       return;
     }
 
-    if (!res.ok) throw new Error(`Checkout failed (${res.status})`);
+    if (!res.ok) {
+      const errBody = await res.json().catch(() => ({}));
+      throw new Error(`Checkout failed (${res.status}): ${errBody.message || errBody.error || "no detail"}`);
+    }
 
     const { url } = await res.json();
     window.location.href = url;
