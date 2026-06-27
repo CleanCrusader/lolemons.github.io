@@ -22,7 +22,7 @@ import {
   createOrderForFulfillment,
 } from "./lib/veeqo.js";
 
-const HOLD_MINUTES = 15;
+const HOLD_MINUTES = 30; // Stripe requires expires_at to be at least 30 minutes out
 
 // SKU -> Amazon ASIN, used only by the one-time /api/admin/setup-veeqo route
 // to link each product to the Amazon fulfillment channel in Veeqo.
