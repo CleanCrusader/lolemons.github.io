@@ -40,6 +40,12 @@ function getStripe(env) {
 // POST /api/create-checkout-session
 // ---------------------------------------------------------------------------
 async function handleCreateCheckoutSession(request, env) {
+  if (!env.SITE_URL) {
+    return Response.json(
+      { error: "config_error", message: "Missing Cloudflare env var: SITE_URL" },
+      { status: 500 }
+    );
+  }
   let body;
   try {
     body = await request.json();
