@@ -138,3 +138,4 @@ supabase/schema.sql                                        — run once in the S
 ```
 # Trigger redeploy: confirm latest env vars (ADMIN_SETUP_KEY, etc.) are picked up
 # Verify: Branch Control now correctly points to main (was claude/website-revamp)
+# Trigger rebuild: confirm SITE_URL env var is picked up after adding it
