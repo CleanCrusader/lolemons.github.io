@@ -151,7 +151,7 @@ async function main() {
   const channelId = await findNativeAmazonChannelId();
   const remotePrices = await fetchRemotePrices(channelId);
 
-  const existingRows = await select("inventory", {}, "sku,price,stripe_product_id");
+  const existingRows = await select("inventory", {}, "sku,price,stripe_product_id,stripe_price_id");
   const existingBySku = new Map(existingRows.map((r) => [r.sku, r]));
 
   const changes = new Map();
@@ -168,8 +168,8 @@ async function main() {
       console.warn(`${sku}: no stripe_product_id stored in Supabase yet — can't update Stripe. Skipping.`);
       continue;
     }
-    if (existing.price !== null && Number(existing.price) === newPrice) {
-      console.log(`${sku}: price unchanged ($${newPrice}).`);
+    if (existing.price !== null && Number(existing.price) === newPrice && existing.stripe_price_id) {
+      console.log(`${sku}: price unchanged ($${newPrice}) and Stripe price already set.`);
       continue;
     }
 
