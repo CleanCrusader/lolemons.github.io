@@ -137,3 +137,4 @@ supabase/schema.sql                                        — run once in the S
 .github/workflows/purge-pii.yml                            — daily job
 ```
 # Trigger redeploy: confirm latest env vars (ADMIN_SETUP_KEY, etc.) are picked up
+# Verify: Branch Control now correctly points to main (was claude/website-revamp)

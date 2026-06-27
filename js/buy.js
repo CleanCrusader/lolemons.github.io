@@ -8,6 +8,7 @@
 // check is purely for a responsive "in stock / out of stock" display, not
 // the actual oversell guard.
 
+(function () {
 const SUPABASE_URL = "https://fkdjfrvyytkiutmwkzap.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZrZGpmcnZ5eXRraXV0bXdremFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMjYxMjUsImV4cCI6MjA5NzkwMjEyNX0.FYdTWjSWLuYPbxqsJ_U35_WYidlITNe1rx_hgQ0H9YI";
@@ -114,3 +115,4 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (buyBtn) buyBtn.addEventListener("click", () => startCheckout(card));
   });
 });
+})();
