@@ -27,9 +27,32 @@ import Stripe from "stripe";
 import { upsert, select } from "./supabase-client.js";
 
 const VEEQO_BASE = "https://api.veeqo.com";
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const SKUS = ["FV-LNLR-DPRX", "IT-3U6C-E8HZ", "LOL1A"];
+
+function assertEnv() {
+  const required = [
+    "VEEQO_API_KEY",
+    "STRIPE_SECRET_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "GITHUB_TOKEN",
+    "GITHUB_REPOSITORY",
+  ];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length) {
+    throw new Error(`Missing required env var(s): ${missing.join(", ")}`);
+  }
+}
+
+// Created lazily (after assertEnv runs), not at module load time -- the
+// Stripe SDK throws immediately if given an empty key, which previously
+// happened *before* any of our own error handling got a chance to run.
+let _stripe;
+function getStripe() {
+  if (!_stripe) _stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
 
 async function veeqoFetch(path) {
   const res = await fetch(`${VEEQO_BASE}${path}`, {
@@ -75,6 +98,7 @@ async function fetchRemotePrices(channelId) {
 }
 
 async function updateStripePrice(stripeProductId, sku, newPrice) {
+  const stripe = getStripe();
   const newStripePrice = await stripe.prices.create({
     product: stripeProductId,
     currency: "usd",
@@ -127,7 +151,7 @@ function updateProductsHtml(html, priceChanges) {
 async function commitToGitHub(newProductsHtml, sha) {
   const repo = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
-  const branch = "main";
+  const branch = process.env.GITHUB_REF_NAME || "main";
 
   const headers = {
     Authorization: `Bearer ${token}`,
@@ -135,7 +159,7 @@ async function commitToGitHub(newProductsHtml, sha) {
     "Content-Type": "application/json",
   };
 
-  await fetch(`https://api.github.com/repos/${repo}/contents/products.html`, {
+  const res = await fetch(`https://api.github.com/repos/${repo}/contents/products.html`, {
     method: "PUT",
     headers,
     body: JSON.stringify({
@@ -145,9 +169,15 @@ async function commitToGitHub(newProductsHtml, sha) {
       branch,
     }),
   });
+
+  if (!res.ok) {
+    throw new Error(`GitHub commit to products.html failed (${res.status}): ${await res.text()}`);
+  }
 }
 
 async function main() {
+  assertEnv();
+
   const channelId = await findNativeAmazonChannelId();
   const remotePrices = await fetchRemotePrices(channelId);
 
@@ -191,8 +221,12 @@ async function main() {
   }
 
   const repo = process.env.GITHUB_REPOSITORY;
+  const branch = process.env.GITHUB_REF_NAME || "main";
   const headers = { Authorization: `Bearer ${process.env.GITHUB_TOKEN}`, Accept: "application/vnd.github+json" };
-  const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/products.html?ref=main`, { headers });
+  const fileRes = await fetch(`https://api.github.com/repos/${repo}/contents/products.html?ref=${branch}`, { headers });
+  if (!fileRes.ok) {
+    throw new Error(`Fetching products.html from GitHub failed (${fileRes.status}): ${await fileRes.text()}`);
+  }
   const { content, sha } = await fileRes.json();
   const currentHtml = Buffer.from(content, "base64").toString("utf-8");
 
