@@ -5,6 +5,15 @@
 //
 // Required env: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 
+function assertEnv(env) {
+  const missing = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"].filter((k) => !env[k]);
+  if (missing.length) {
+    throw new Error(
+      `Missing Cloudflare env var(s): ${missing.join(", ")}. Check Workers & Pages > Settings > Variables and Secrets.`
+    );
+  }
+}
+
 function headers(env) {
   return {
     apikey: env.SUPABASE_SERVICE_ROLE_KEY,
@@ -14,6 +23,7 @@ function headers(env) {
 }
 
 export async function sbInsert(env, table, row) {
+  assertEnv(env);
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/${table}`, {
     method: "POST",
     headers: { ...headers(env), Prefer: "return=representation" },
@@ -24,6 +34,7 @@ export async function sbInsert(env, table, row) {
 }
 
 export async function sbPatch(env, table, filters, body) {
+  assertEnv(env);
   const url = new URL(`${env.SUPABASE_URL}/rest/v1/${table}`);
   for (const [k, v] of Object.entries(filters)) url.searchParams.set(k, v);
   const res = await fetch(url, {
@@ -36,6 +47,7 @@ export async function sbPatch(env, table, filters, body) {
 }
 
 export async function sbSelect(env, table, filters = {}, columns = "*") {
+  assertEnv(env);
   const url = new URL(`${env.SUPABASE_URL}/rest/v1/${table}`);
   url.searchParams.set("select", columns);
   for (const [k, v] of Object.entries(filters)) url.searchParams.set(k, v);
@@ -45,6 +57,7 @@ export async function sbSelect(env, table, filters = {}, columns = "*") {
 }
 
 export async function sbRpc(env, fnName, args) {
+  assertEnv(env);
   const res = await fetch(`${env.SUPABASE_URL}/rest/v1/rpc/${fnName}`, {
     method: "POST",
     headers: headers(env),
