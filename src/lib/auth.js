@@ -11,7 +11,7 @@
 import { sbSelect, sbPatch } from "./sb.js";
 import { sendEmail } from "./email.js";
 
-const PBKDF2_ITERATIONS = 150000;
+const PBKDF2_ITERATIONS = 100000; // Cloudflare Workers' PBKDF2 implementation caps out here
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
 function bytesToHex(bytes) {
