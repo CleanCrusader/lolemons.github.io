@@ -14,6 +14,7 @@
 
 import Stripe from "stripe";
 import { sbInsert, sbPatch, sbSelect, sbRpc } from "./lib/sb.js";
+import { sendEmail } from "./lib/email.js";
 import {
   findProductBySku,
   ensureAmazonFulfillmentChannel,
@@ -269,7 +270,57 @@ async function handleStripeWebhook(request, env) {
 // ---------------------------------------------------------------------------
 const VERIFIED_ORDER_STATUSES = ["paid", "fulfilling", "shipped"];
 
-async function handleSubmitReview(request, env) {
+// 4-5 stars: auto-approved immediately. 3 and below: held for manual
+// moderation, and triggers an internal alert + a customer auto-response
+// so a low rating turns into an outreach opportunity instead of just
+// sitting in a queue.
+const AUTO_APPROVE_MIN_RATING = 4;
+const NEGATIVE_REVIEW_MAX_RATING = 3;
+
+async function notifyOnNegativeReview(env, { sku, name, email, rating, reviewText }) {
+  const fromAddress = env.REVIEWS_FROM_EMAIL || "reviews@lolemons.com";
+
+  try {
+    await sendEmail(env, {
+      to: "contact@lolemons.com",
+      from: fromAddress,
+      replyTo: email,
+      subject: `New ${rating}-star review needs attention (${sku})`,
+      html: `
+        <p><strong>Product SKU:</strong> ${sku}</p>
+        <p><strong>Rating:</strong> ${rating} / 5</p>
+        <p><strong>Customer:</strong> ${name} (${email})</p>
+        <p><strong>Review:</strong></p>
+        <p>${reviewText}</p>
+        <p>This review is held as "pending" in Supabase -- approve or reject it in the table editor.
+        Reply-to on this email is set to the customer directly.</p>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send internal review-alert email:", err);
+  }
+
+  try {
+    await sendEmail(env, {
+      to: email,
+      from: fromAddress,
+      replyTo: "contact@lolemons.com",
+      subject: "We'd like to make this right",
+      html: `
+        <p>Hi ${name},</p>
+        <p>Thanks for taking the time to share your experience with us. We're sorry to hear it didn't
+        fully meet your expectations — that's not the experience we want anyone to have.</p>
+        <p>We'd really like the chance to make this right. If you can reply to this email with a bit
+        more detail about what happened, we'll do everything we can to help.</p>
+        <p>— The Lots of Lemon team</p>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send customer auto-response email:", err);
+  }
+}
+
+async function handleSubmitReview(request, env, ctx) {
   let body;
   try {
     body = await request.json();
@@ -319,19 +370,29 @@ async function handleSubmitReview(request, env) {
     );
   }
 
+  const status = rating >= AUTO_APPROVE_MIN_RATING ? "approved" : "pending";
+
   await sbInsert(env, "reviews", {
     sku,
     customer_name: name,
     customer_email: email,
     rating,
     review_text: reviewText,
-    status: "pending",
+    status,
   });
 
-  return Response.json({
-    ok: true,
-    message: "Thanks! Your purchase is verified -- your review will appear once it's been checked by our team.",
-  });
+  if (rating <= NEGATIVE_REVIEW_MAX_RATING) {
+    // Fire-and-forget -- don't make the customer wait on email delivery
+    // to get their submission confirmation.
+    ctx.waitUntil(notifyOnNegativeReview(env, { sku, name, email, rating, reviewText }));
+  }
+
+  const message =
+    status === "approved"
+      ? "Thanks! Your purchase is verified and your review is now live."
+      : "Thanks for the feedback -- your purchase is verified. We've let our team know so we can follow up and try to make this right.";
+
+  return Response.json({ ok: true, message });
 }
 
 // ---------------------------------------------------------------------------
@@ -355,7 +416,7 @@ export default {
       }
 
       if (url.pathname === "/api/submit-review" && request.method === "POST") {
-        return await handleSubmitReview(request, env);
+        return await handleSubmitReview(request, env, ctx);
       }
     } catch (err) {
       console.error(`Error handling ${url.pathname}:`, err);
