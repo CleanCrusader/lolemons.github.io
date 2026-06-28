@@ -14,6 +14,8 @@
 
 import Stripe from "stripe";
 import { sbInsert, sbPatch, sbSelect, sbRpc } from "./lib/sb.js";
+import { sendEmail } from "./lib/email.js";
+import { isPasswordSet, setPassword, verifyPassword, startPasswordReset, resetPasswordWithToken } from "./lib/auth.js";
 import {
   findProductBySku,
   ensureAmazonFulfillmentChannel,
@@ -265,6 +267,264 @@ async function handleStripeWebhook(request, env) {
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/submit-review
+// ---------------------------------------------------------------------------
+const VERIFIED_ORDER_STATUSES = ["paid", "fulfilling", "shipped"];
+
+// 4-5 stars: auto-approved immediately. 3 and below: held for manual
+// moderation, and triggers an internal alert + a customer auto-response
+// so a low rating turns into an outreach opportunity instead of just
+// sitting in a queue.
+const AUTO_APPROVE_MIN_RATING = 4;
+const NEGATIVE_REVIEW_MAX_RATING = 3;
+
+async function notifyOnNegativeReview(env, { sku, name, email, rating, reviewText }) {
+  const fromAddress = env.REVIEWS_FROM_EMAIL || "reviews@lolemons.com";
+
+  try {
+    await sendEmail(env, {
+      to: "contact@lolemons.com",
+      from: fromAddress,
+      replyTo: email,
+      subject: `New ${rating}-star review needs attention (${sku})`,
+      html: `
+        <p><strong>Product SKU:</strong> ${sku}</p>
+        <p><strong>Rating:</strong> ${rating} / 5</p>
+        <p><strong>Customer:</strong> ${name} (${email})</p>
+        <p><strong>Review:</strong></p>
+        <p>${reviewText}</p>
+        <p>This review is held as "pending" in Supabase -- approve or reject it in the table editor.
+        Reply-to on this email is set to the customer directly.</p>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send internal review-alert email:", err);
+  }
+
+  try {
+    await sendEmail(env, {
+      to: email,
+      from: fromAddress,
+      replyTo: "contact@lolemons.com",
+      subject: "We'd like to make this right",
+      html: `
+        <p>Hi ${name},</p>
+        <p>Thanks for taking the time to share your experience with us. We're sorry to hear it didn't
+        fully meet your expectations — that's not the experience we want anyone to have.</p>
+        <p>We'd really like the chance to make this right. If you can reply to this email with a bit
+        more detail about what happened, we'll do everything we can to help.</p>
+        <p>— The Lots of Lemon team</p>
+      `,
+    });
+  } catch (err) {
+    console.error("Failed to send customer auto-response email:", err);
+  }
+}
+
+async function handleSubmitReview(request, env, ctx) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body", message: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const sku = String(body.sku || "").trim();
+  const email = String(body.email || "").trim().toLowerCase();
+  const name = String(body.name || "").trim();
+  const rating = Math.max(1, Math.min(5, parseInt(body.rating, 10) || 0));
+  const reviewText = String(body.review_text || "").trim();
+
+  if (!sku || !email || !name || !rating || !reviewText) {
+    return Response.json(
+      { error: "missing_fields", message: "Name, email, a star rating, and review text are all required." },
+      { status: 400 }
+    );
+  }
+
+  // Purchase verification: this is the actual gate, not just a badge.
+  // No completed order containing this SKU under this email = no review.
+  const orders = await sbSelect(env, "dtc_orders", { customer_email: `ilike.${email}` }, "items,status");
+  const verified = orders.some(
+    (o) =>
+      VERIFIED_ORDER_STATUSES.includes(o.status) &&
+      Array.isArray(o.items) &&
+      o.items.some((item) => item.sku === sku)
+  );
+
+  if (!verified) {
+    return Response.json(
+      {
+        error: "not_verified",
+        message: "We couldn't find a completed order for this product under that email address, so we can't publish a review.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // One review per email per SKU -- a verified buyer can't spam the form.
+  const existing = await sbSelect(env, "reviews", { sku: `eq.${sku}`, customer_email: `ilike.${email}` }, "id");
+  if (existing.length > 0) {
+    return Response.json(
+      { error: "duplicate_review", message: "Looks like you've already submitted a review for this product." },
+      { status: 409 }
+    );
+  }
+
+  const status = rating >= AUTO_APPROVE_MIN_RATING ? "approved" : "pending";
+
+  await sbInsert(env, "reviews", {
+    sku,
+    customer_name: name,
+    customer_email: email,
+    rating,
+    review_text: reviewText,
+    status,
+  });
+
+  if (rating <= NEGATIVE_REVIEW_MAX_RATING) {
+    // Fire-and-forget -- don't make the customer wait on email delivery
+    // to get their submission confirmation.
+    ctx.waitUntil(notifyOnNegativeReview(env, { sku, name, email, rating, reviewText }));
+  }
+
+  const message =
+    status === "approved"
+      ? "Thanks! Your purchase is verified and your review is now live."
+      : "Thanks for the feedback -- your purchase is verified. We've let our team know so we can follow up and try to make this right.";
+
+  return Response.json({ ok: true, message });
+}
+
+// ---------------------------------------------------------------------------
+// GET  /api/admin/auth-status     -- is a password set up yet? (public --
+//                                     reveals nothing but a boolean)
+// POST /api/admin/setup-password  -- (re-)set the password using the
+//                                     master ADMIN_SETUP_KEY. Works any
+//                                     time, not just once -- doubles as a
+//                                     permanent fallback if both the
+//                                     password and the reset-via-email
+//                                     flow are ever unavailable.
+// POST /api/admin/change-password -- change password while logged in,
+//                                     using the current password
+// POST /api/admin/forgot-password -- emails a time-limited reset link to
+//                                     contact@lolemons.com
+// POST /api/admin/reset-password  -- complete a reset using that link's
+//                                     token
+// GET  /api/admin/pending-reviews -- list reviews awaiting moderation
+// POST /api/admin/review-action   -- approve or reject by id
+//
+// pending-reviews/review-action are gated by the admin password itself
+// (sent as a header, re-verified via PBKDF2 on every request -- there's
+// no session to manage, which is plenty appropriate for a single-admin
+// internal tool).
+// ---------------------------------------------------------------------------
+async function handleAuthStatus(request, env) {
+  return Response.json({ password_set: await isPasswordSet(env) });
+}
+
+async function handleSetupPassword(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  if (body.setup_key !== env.ADMIN_SETUP_KEY) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (!body.new_password || body.new_password.length < 8) {
+    return Response.json({ error: "weak_password", message: "Password must be at least 8 characters." }, { status: 400 });
+  }
+
+  await setPassword(env, body.new_password);
+  return Response.json({ ok: true });
+}
+
+async function handleChangePassword(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const validCurrent = await verifyPassword(env, body.current_password);
+  if (!validCurrent) {
+    return Response.json({ error: "wrong_password", message: "Current password is incorrect." }, { status: 403 });
+  }
+  if (!body.new_password || body.new_password.length < 8) {
+    return Response.json({ error: "weak_password", message: "New password must be at least 8 characters." }, { status: 400 });
+  }
+
+  await setPassword(env, body.new_password);
+  return Response.json({ ok: true });
+}
+
+async function handleForgotPassword(request, env) {
+  const siteOrigin = new URL(request.url).origin; // works correctly whether
+  // this is the production domain or a staging preview's hashed URL
+  await startPasswordReset(env, siteOrigin);
+  // Always return the same generic response regardless of internal state.
+  return Response.json({ ok: true, message: "If an admin account exists, a reset link has been sent to contact@lolemons.com." });
+}
+
+async function handleResetPassword(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  if (!body.new_password || body.new_password.length < 8) {
+    return Response.json({ error: "weak_password", message: "Password must be at least 8 characters." }, { status: 400 });
+  }
+
+  const result = await resetPasswordWithToken(env, body.reset_token, body.new_password);
+  if (!result.ok) {
+    return Response.json({ error: "reset_failed", message: result.message }, { status: 400 });
+  }
+  return Response.json({ ok: true });
+}
+
+async function handleListPendingReviews(request, env) {
+  if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  const reviews = await sbSelect(
+    env,
+    "reviews",
+    { status: "eq.pending", order: "created_at.desc" },
+    "id,sku,customer_name,customer_email,rating,review_text,created_at"
+  );
+  return Response.json({ reviews });
+}
+
+async function handleReviewAction(request, env) {
+  if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const { review_id, action } = body;
+  if (!review_id || !["approve", "reject"].includes(action)) {
+    return Response.json({ error: "invalid_request", message: "review_id and a valid action are required." }, { status: 400 });
+  }
+
+  await sbPatch(env, "reviews", { id: `eq.${review_id}` }, { status: action === "approve" ? "approved" : "rejected" });
+  return Response.json({ ok: true });
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 export default {
@@ -282,6 +542,38 @@ export default {
 
       if (url.pathname === "/api/stripe-webhook" && request.method === "POST") {
         return await handleStripeWebhook(request, env);
+      }
+
+      if (url.pathname === "/api/submit-review" && request.method === "POST") {
+        return await handleSubmitReview(request, env, ctx);
+      }
+
+      if (url.pathname === "/api/admin/auth-status" && request.method === "GET") {
+        return await handleAuthStatus(request, env);
+      }
+
+      if (url.pathname === "/api/admin/setup-password" && request.method === "POST") {
+        return await handleSetupPassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/change-password" && request.method === "POST") {
+        return await handleChangePassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/forgot-password" && request.method === "POST") {
+        return await handleForgotPassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/reset-password" && request.method === "POST") {
+        return await handleResetPassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/pending-reviews" && request.method === "GET") {
+        return await handleListPendingReviews(request, env);
+      }
+
+      if (url.pathname === "/api/admin/review-action" && request.method === "POST") {
+        return await handleReviewAction(request, env);
       }
     } catch (err) {
       console.error(`Error handling ${url.pathname}:`, err);

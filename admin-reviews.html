@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review Moderation — Lots of Lemon</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  body { padding: 48px 24px 80px; }
+  .admin-wrap { max-width: 760px; margin: 0 auto; }
+  .auth-box { max-width: 380px; margin: 80px auto; text-align: center; }
+  .auth-box input {
+    width: 100%; padding: 12px 14px; margin: 10px 0; border-radius: var(--radius);
+    border: 1.5px solid rgba(245,196,0,0.3); background: var(--char); color: var(--cream);
+    font-family: var(--font-body); font-size: 0.95rem;
+  }
+  .auth-box .btn { width: 100%; margin-top: 8px; }
+  .auth-link {
+    display: inline-block; margin-top: 14px; font-size: 0.85rem;
+    color: var(--cream-dim); cursor: pointer; text-decoration: underline;
+  }
+  .auth-error { color: var(--rust); font-size: 0.85rem; margin-top: 10px; min-height: 1.2em; }
+  .auth-note { color: var(--cream-dim); font-size: 0.85rem; }
+  .admin-toolbar { display: flex; gap: 12px; margin-bottom: 28px; flex-wrap: wrap; }
+  .admin-review-card {
+    background: var(--char); border: 1px solid rgba(245,196,0,0.15);
+    border-radius: var(--radius); padding: 22px; margin-bottom: 16px;
+  }
+  .admin-review-meta {
+    font-family: var(--font-mono); font-size: 0.74rem; color: var(--cream-dim);
+    margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .admin-review-author { color: var(--cream-dim); font-size: 0.9rem; margin: 4px 0 10px; }
+  .admin-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-approve { background: var(--leaf-bright); color: var(--ink); border: none; }
+  .btn-reject { background: transparent; color: var(--rust); border: 1.5px solid var(--rust); }
+  .btn-approve, .btn-reject {
+    font-family: var(--font-body); font-weight: 600; font-size: 0.9rem;
+    padding: 10px 18px; border-radius: var(--radius); cursor: pointer;
+  }
+  .btn-approve:disabled, .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
+  .admin-empty { color: var(--cream-dim); }
+  [data-view] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="admin-wrap">
+
+  <!-- Loading -->
+  <div data-view="loading" class="auth-box"><p class="auth-note">Loading…</p></div>
+
+  <!-- First-time setup: requires the master ADMIN_SETUP_KEY -->
+  <div data-view="setup" class="auth-box">
+    <span class="eyebrow">Internal tool</span>
+    <h1>Set Up Your Password</h1>
+    <p class="auth-note">No admin password exists yet. Enter your master setup key once to create one.</p>
+    <input type="password" id="setup-master-key" placeholder="Master setup key" autocomplete="off">
+    <input type="password" id="setup-new-password" placeholder="New password (8+ characters)" autocomplete="new-password">
+    <input type="password" id="setup-confirm-password" placeholder="Confirm password" autocomplete="new-password">
+    <button class="btn btn-primary" id="setup-submit-btn">Set Password</button>
+    <p class="auth-error" data-error="setup"></p>
+  </div>
+
+  <!-- Normal login -->
+  <div data-view="login" class="auth-box">
+    <span class="eyebrow">Internal tool</span>
+    <h1>Review Moderation</h1>
+    <p class="auth-note">Enter your password to continue.</p>
+    <input type="password" id="login-password" placeholder="Password" autocomplete="current-password">
+    <button class="btn btn-primary" id="login-submit-btn">Log In</button>
+    <p class="auth-error" data-error="login"></p>
+    <span class="auth-link" id="forgot-link">Forgot password?</span>
+  </div>
+
+  <!-- Forgot password confirmation -->
+  <div data-view="forgot" class="auth-box">
+    <span class="eyebrow">Internal tool</span>
+    <h1>Reset Password</h1>
+    <p class="auth-note">We'll email a reset link to contact@lolemons.com.</p>
+    <button class="btn btn-primary" id="forgot-submit-btn">Send Reset Link</button>
+    <p class="auth-error" data-error="forgot"></p>
+    <span class="auth-link" id="back-to-login-link">Back to login</span>
+  </div>
+
+  <!-- Set new password via emailed reset link -->
+  <div data-view="reset" class="auth-box">
+    <span class="eyebrow">Internal tool</span>
+    <h1>Set a New Password</h1>
+    <input type="password" id="reset-new-password" placeholder="New password (8+ characters)" autocomplete="new-password">
+    <input type="password" id="reset-confirm-password" placeholder="Confirm password" autocomplete="new-password">
+    <button class="btn btn-primary" id="reset-submit-btn">Set New Password</button>
+    <p class="auth-error" data-error="reset"></p>
+  </div>
+
+  <!-- Logged in: the actual moderation panel -->
+  <div data-view="panel">
+    <span class="eyebrow">Internal tool</span>
+    <h1>Pending Reviews</h1>
+    <div class="admin-toolbar">
+      <button class="btn btn-ghost" id="refresh-btn">Refresh</button>
+      <button class="btn btn-ghost" id="change-password-btn">Change password</button>
+      <button class="btn btn-ghost" id="logout-btn">Log out</button>
+    </div>
+    <div id="change-password-box" class="auth-box" style="display:none; margin: 0 0 28px;">
+      <input type="password" id="cp-current" placeholder="Current password">
+      <input type="password" id="cp-new" placeholder="New password (8+ characters)">
+      <button class="btn btn-primary" id="cp-submit-btn">Update Password</button>
+      <p class="auth-error" data-error="change"></p>
+    </div>
+    <div id="reviews-list"><p class="admin-empty">Loading…</p></div>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  const PASSWORD_STORAGE = "lol_admin_password";
+  const views = Array.from(document.querySelectorAll("[data-view]"));
+
+  function showView(name) {
+    views.forEach((v) => (v.style.display = v.dataset.view === name ? "block" : "none"));
+  }
+
+  function setError(scope, message) {
+    const el = document.querySelector(`[data-error="${scope}"]`);
+    if (el) el.textContent = message || "";
+  }
+
+  function getStoredPassword() { return localStorage.getItem(PASSWORD_STORAGE); }
+  function storePassword(p) { localStorage.setItem(PASSWORD_STORAGE, p); }
+  function clearStoredPassword() { localStorage.removeItem(PASSWORD_STORAGE); }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  async function api(path, { method = "GET", body, password } = {}) {
+    const headers = {};
+    if (body) headers["Content-Type"] = "application/json";
+    if (password) headers["X-Admin-Password"] = password;
+    const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    let data = null;
+    try { data = await res.json(); } catch {}
+    return { ok: res.ok, status: res.status, data };
+  }
+
+  // --- Reviews panel -------------------------------------------------------
+
+  async function loadReviews() {
+    const list = document.getElementById("reviews-list");
+    list.innerHTML = '<p class="admin-empty">Loading…</p>';
+    const password = getStoredPassword();
+
+    const { ok, status, data } = await api("/api/admin/pending-reviews", { password });
+    if (status === 403) {
+      clearStoredPassword();
+      showView("login");
+      return;
+    }
+    if (!ok) {
+      list.innerHTML = '<p class="admin-empty">Something went wrong loading reviews. Try refreshing.</p>';
+      return;
+    }
+    renderReviews(data.reviews || []);
+  }
+
+  function renderReviews(reviews) {
+    const list = document.getElementById("reviews-list");
+    if (reviews.length === 0) {
+      list.innerHTML = '<p class="admin-empty">No pending reviews right now.</p>';
+      return;
+    }
+    list.innerHTML = reviews
+      .map((r) => {
+        const date = new Date(r.created_at).toLocaleString();
+        const stars = "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
+        return `
+          <div class="admin-review-card" data-review-id="${r.id}">
+            <div class="admin-review-meta">${escapeHtml(r.sku)} &middot; ${date}</div>
+            <p class="admin-review-author"><strong>${escapeHtml(r.customer_name)}</strong> (${escapeHtml(r.customer_email)}) &middot; <span class="stars">${stars}</span></p>
+            <p>${escapeHtml(r.review_text)}</p>
+            <div class="admin-actions">
+              <button class="btn-approve" data-action="approve">Approve</button>
+              <button class="btn-reject" data-action="reject">Reject</button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  document.getElementById("reviews-list").addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    const card = btn.closest(".admin-review-card");
+    const allButtons = card.querySelectorAll("button");
+    allButtons.forEach((b) => (b.disabled = true));
+
+    const { ok } = await api("/api/admin/review-action", {
+      method: "POST",
+      password: getStoredPassword(),
+      body: { review_id: card.dataset.reviewId, action: btn.dataset.action },
+    });
+
+    if (ok) {
+      card.remove();
+      if (document.getElementById("reviews-list").children.length === 0) {
+        document.getElementById("reviews-list").innerHTML = '<p class="admin-empty">No pending reviews right now.</p>';
+      }
+    } else {
+      alert("Something went wrong -- please try again.");
+      allButtons.forEach((b) => (b.disabled = false));
+    }
+  });
+
+  document.getElementById("refresh-btn").addEventListener("click", loadReviews);
+  document.getElementById("logout-btn").addEventListener("click", () => {
+    clearStoredPassword();
+    showView("login");
+  });
+
+  // --- Change password (while logged in) ------------------------------------
+
+  document.getElementById("change-password-btn").addEventListener("click", () => {
+    const box = document.getElementById("change-password-box");
+    box.style.display = box.style.display === "none" ? "block" : "none";
+  });
+
+  document.getElementById("cp-submit-btn").addEventListener("click", async () => {
+    setError("change", "");
+    const current = document.getElementById("cp-current").value;
+    const next = document.getElementById("cp-new").value;
+    const { ok, data } = await api("/api/admin/change-password", {
+      method: "POST",
+      body: { current_password: current, new_password: next },
+    });
+    if (!ok) {
+      setError("change", data?.message || "Something went wrong.");
+      return;
+    }
+    storePassword(next);
+    document.getElementById("change-password-box").style.display = "none";
+    document.getElementById("cp-current").value = "";
+    document.getElementById("cp-new").value = "";
+  });
+
+  // --- Setup (first time, gated by master key) ------------------------------
+
+  document.getElementById("setup-submit-btn").addEventListener("click", async () => {
+    setError("setup", "");
+    const masterKey = document.getElementById("setup-master-key").value;
+    const newPassword = document.getElementById("setup-new-password").value;
+    const confirm = document.getElementById("setup-confirm-password").value;
+
+    if (newPassword !== confirm) {
+      setError("setup", "Passwords don't match.");
+      return;
+    }
+
+    const { ok, data } = await api("/api/admin/setup-password", {
+      method: "POST",
+      body: { setup_key: masterKey, new_password: newPassword },
+    });
+    if (!ok) {
+      setError("setup", data?.message || "Setup key was incorrect.");
+      return;
+    }
+    storePassword(newPassword);
+    showView("panel");
+    loadReviews();
+  });
+
+  // --- Normal login ----------------------------------------------------------
+
+  document.getElementById("login-submit-btn").addEventListener("click", async () => {
+    setError("login", "");
+    const password = document.getElementById("login-password").value;
+    const { status } = await api("/api/admin/pending-reviews", { password });
+    if (status === 403) {
+      setError("login", "Incorrect password.");
+      return;
+    }
+    storePassword(password);
+    showView("panel");
+    loadReviews();
+  });
+
+  document.getElementById("forgot-link").addEventListener("click", () => showView("forgot"));
+  document.getElementById("back-to-login-link").addEventListener("click", () => showView("login"));
+
+  document.getElementById("forgot-submit-btn").addEventListener("click", async () => {
+    setError("forgot", "");
+    const btn = document.getElementById("forgot-submit-btn");
+    btn.disabled = true;
+    const { data } = await api("/api/admin/forgot-password", { method: "POST", body: {} });
+    btn.textContent = data?.message || "Check contact@lolemons.com for a reset link.";
+  });
+
+  // --- Reset via emailed link -------------------------------------------------
+
+  function getResetTokenFromUrl() {
+    return new URL(window.location.href).searchParams.get("reset_token");
+  }
+
+  document.getElementById("reset-submit-btn").addEventListener("click", async () => {
+    setError("reset", "");
+    const newPassword = document.getElementById("reset-new-password").value;
+    const confirm = document.getElementById("reset-confirm-password").value;
+    if (newPassword !== confirm) {
+      setError("reset", "Passwords don't match.");
+      return;
+    }
+
+    const { ok, data } = await api("/api/admin/reset-password", {
+      method: "POST",
+      body: { reset_token: getResetTokenFromUrl(), new_password: newPassword },
+    });
+    if (!ok) {
+      setError("reset", data?.message || "Something went wrong.");
+      return;
+    }
+
+    storePassword(newPassword);
+    // Clean the token out of the URL so it can't be reused/bookmarked.
+    window.history.replaceState({}, "", "/admin-reviews.html");
+    showView("panel");
+    loadReviews();
+  });
+
+  // --- Initial load: figure out which view to show ----------------------------
+
+  (async function init() {
+    const resetToken = getResetTokenFromUrl();
+    if (resetToken) {
+      showView("reset");
+      return;
+    }
+
+    const { data } = await api("/api/admin/auth-status");
+    if (!data?.password_set) {
+      showView("setup");
+      return;
+    }
+
+    const storedPassword = getStoredPassword();
+    if (storedPassword) {
+      const { status } = await api("/api/admin/pending-reviews", { password: storedPassword });
+      if (status !== 403) {
+        showView("panel");
+        loadReviews();
+        return;
+      }
+      clearStoredPassword();
+    }
+
+    showView("login");
+  })();
+})();
+</script>
+</body>
+</html>
