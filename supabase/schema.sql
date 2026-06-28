@@ -57,6 +57,7 @@ create table if not exists subscribers (
 
 alter table subscribers enable row level security;
 
+drop policy if exists "Public can subscribe" on subscribers;
 create policy "Public can subscribe" on subscribers
   for insert
   to anon
@@ -100,6 +101,7 @@ create table if not exists inventory (
 
 alter table inventory enable row level security;
 
+drop policy if exists "Public can read inventory" on inventory;
 create policy "Public can read inventory" on inventory
   for select
   to anon
