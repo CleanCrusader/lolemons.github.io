@@ -15,6 +15,7 @@
 import Stripe from "stripe";
 import { sbInsert, sbPatch, sbSelect, sbRpc } from "./lib/sb.js";
 import { sendEmail } from "./lib/email.js";
+import { isPasswordSet, setPassword, verifyPassword, startPasswordReset, resetPasswordWithToken } from "./lib/auth.js";
 import {
   findProductBySku,
   ensureAmazonFulfillmentChannel,
@@ -396,16 +397,100 @@ async function handleSubmitReview(request, env, ctx) {
 }
 
 // ---------------------------------------------------------------------------
-// GET /api/admin/pending-reviews
-// POST /api/admin/review-action
+// GET  /api/admin/auth-status     -- is a password set up yet? (public --
+//                                     reveals nothing but a boolean)
+// POST /api/admin/setup-password  -- (re-)set the password using the
+//                                     master ADMIN_SETUP_KEY. Works any
+//                                     time, not just once -- doubles as a
+//                                     permanent fallback if both the
+//                                     password and the reset-via-email
+//                                     flow are ever unavailable.
+// POST /api/admin/change-password -- change password while logged in,
+//                                     using the current password
+// POST /api/admin/forgot-password -- emails a time-limited reset link to
+//                                     contact@lolemons.com
+// POST /api/admin/reset-password  -- complete a reset using that link's
+//                                     token
+// GET  /api/admin/pending-reviews -- list reviews awaiting moderation
+// POST /api/admin/review-action   -- approve or reject by id
 //
-// Both gated by the same ADMIN_SETUP_KEY used for the one-time Veeqo setup
-// route -- sent as a header (not a URL query param) since these are called
-// from the admin-reviews.html page's own JS, not typed into a browser
-// address bar, so there's no reason for the key to end up in URLs/logs.
+// pending-reviews/review-action are gated by the admin password itself
+// (sent as a header, re-verified via PBKDF2 on every request -- there's
+// no session to manage, which is plenty appropriate for a single-admin
+// internal tool).
 // ---------------------------------------------------------------------------
+async function handleAuthStatus(request, env) {
+  return Response.json({ password_set: await isPasswordSet(env) });
+}
+
+async function handleSetupPassword(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  if (body.setup_key !== env.ADMIN_SETUP_KEY) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  if (!body.new_password || body.new_password.length < 8) {
+    return Response.json({ error: "weak_password", message: "Password must be at least 8 characters." }, { status: 400 });
+  }
+
+  await setPassword(env, body.new_password);
+  return Response.json({ ok: true });
+}
+
+async function handleChangePassword(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const validCurrent = await verifyPassword(env, body.current_password);
+  if (!validCurrent) {
+    return Response.json({ error: "wrong_password", message: "Current password is incorrect." }, { status: 403 });
+  }
+  if (!body.new_password || body.new_password.length < 8) {
+    return Response.json({ error: "weak_password", message: "New password must be at least 8 characters." }, { status: 400 });
+  }
+
+  await setPassword(env, body.new_password);
+  return Response.json({ ok: true });
+}
+
+async function handleForgotPassword(request, env) {
+  const siteOrigin = new URL(request.url).origin; // works correctly whether
+  // this is the production domain or a staging preview's hashed URL
+  await startPasswordReset(env, siteOrigin);
+  // Always return the same generic response regardless of internal state.
+  return Response.json({ ok: true, message: "If an admin account exists, a reset link has been sent to contact@lolemons.com." });
+}
+
+async function handleResetPassword(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  if (!body.new_password || body.new_password.length < 8) {
+    return Response.json({ error: "weak_password", message: "Password must be at least 8 characters." }, { status: 400 });
+  }
+
+  const result = await resetPasswordWithToken(env, body.reset_token, body.new_password);
+  if (!result.ok) {
+    return Response.json({ error: "reset_failed", message: result.message }, { status: 400 });
+  }
+  return Response.json({ ok: true });
+}
+
 async function handleListPendingReviews(request, env) {
-  if (request.headers.get("x-admin-key") !== env.ADMIN_SETUP_KEY) {
+  if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -419,7 +504,7 @@ async function handleListPendingReviews(request, env) {
 }
 
 async function handleReviewAction(request, env) {
-  if (request.headers.get("x-admin-key") !== env.ADMIN_SETUP_KEY) {
+  if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
     return new Response("Forbidden", { status: 403 });
   }
 
@@ -461,6 +546,26 @@ export default {
 
       if (url.pathname === "/api/submit-review" && request.method === "POST") {
         return await handleSubmitReview(request, env, ctx);
+      }
+
+      if (url.pathname === "/api/admin/auth-status" && request.method === "GET") {
+        return await handleAuthStatus(request, env);
+      }
+
+      if (url.pathname === "/api/admin/setup-password" && request.method === "POST") {
+        return await handleSetupPassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/change-password" && request.method === "POST") {
+        return await handleChangePassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/forgot-password" && request.method === "POST") {
+        return await handleForgotPassword(request, env);
+      }
+
+      if (url.pathname === "/api/admin/reset-password" && request.method === "POST") {
+        return await handleResetPassword(request, env);
       }
 
       if (url.pathname === "/api/admin/pending-reviews" && request.method === "GET") {

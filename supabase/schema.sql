@@ -264,3 +264,25 @@ create or replace view public_reviews as
 grant select on public_reviews to anon;
 
 create index if not exists reviews_sku_idx on reviews (sku, status);
+
+-- =========================================================
+-- Admin authentication (review moderation page)
+-- =========================================================
+--
+-- Singleton row (id is always 'admin' -- there's only one admin account).
+-- password_hash is a PBKDF2 derivation, never the plaintext password --
+-- this table being read by anyone doesn't expose anything usable on its
+-- own. Zero anon policies, same as dtc_orders: service_role only.
+
+create table if not exists admin_credentials (
+  id text primary key default 'admin',
+  password_hash text,
+  salt text,
+  reset_token text,
+  reset_token_expires_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+alter table admin_credentials enable row level security;
+
+insert into admin_credentials (id) values ('admin') on conflict (id) do nothing;
