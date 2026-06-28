@@ -396,6 +396,50 @@ async function handleSubmitReview(request, env, ctx) {
 }
 
 // ---------------------------------------------------------------------------
+// GET /api/admin/pending-reviews
+// POST /api/admin/review-action
+//
+// Both gated by the same ADMIN_SETUP_KEY used for the one-time Veeqo setup
+// route -- sent as a header (not a URL query param) since these are called
+// from the admin-reviews.html page's own JS, not typed into a browser
+// address bar, so there's no reason for the key to end up in URLs/logs.
+// ---------------------------------------------------------------------------
+async function handleListPendingReviews(request, env) {
+  if (request.headers.get("x-admin-key") !== env.ADMIN_SETUP_KEY) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  const reviews = await sbSelect(
+    env,
+    "reviews",
+    { status: "eq.pending", order: "created_at.desc" },
+    "id,sku,customer_name,customer_email,rating,review_text,created_at"
+  );
+  return Response.json({ reviews });
+}
+
+async function handleReviewAction(request, env) {
+  if (request.headers.get("x-admin-key") !== env.ADMIN_SETUP_KEY) {
+    return new Response("Forbidden", { status: 403 });
+  }
+
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const { review_id, action } = body;
+  if (!review_id || !["approve", "reject"].includes(action)) {
+    return Response.json({ error: "invalid_request", message: "review_id and a valid action are required." }, { status: 400 });
+  }
+
+  await sbPatch(env, "reviews", { id: `eq.${review_id}` }, { status: action === "approve" ? "approved" : "rejected" });
+  return Response.json({ ok: true });
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 export default {
@@ -417,6 +461,14 @@ export default {
 
       if (url.pathname === "/api/submit-review" && request.method === "POST") {
         return await handleSubmitReview(request, env, ctx);
+      }
+
+      if (url.pathname === "/api/admin/pending-reviews" && request.method === "GET") {
+        return await handleListPendingReviews(request, env);
+      }
+
+      if (url.pathname === "/api/admin/review-action" && request.method === "POST") {
+        return await handleReviewAction(request, env);
       }
     } catch (err) {
       console.error(`Error handling ${url.pathname}:`, err);

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Review Moderation — Lots of Lemon</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  body { padding: 48px 24px 80px; }
+  .admin-wrap { max-width: 760px; margin: 0 auto; }
+  #key-gate { max-width: 380px; margin: 100px auto; text-align: center; }
+  #key-gate input {
+    width: 100%; padding: 12px 14px; margin: 16px 0; border-radius: var(--radius);
+    border: 1.5px solid rgba(245,196,0,0.3); background: var(--char); color: var(--cream);
+    font-family: var(--font-body); font-size: 0.95rem;
+  }
+  .admin-toolbar { display: flex; gap: 12px; margin-bottom: 28px; }
+  .admin-review-card {
+    background: var(--char); border: 1px solid rgba(245,196,0,0.15);
+    border-radius: var(--radius); padding: 22px; margin-bottom: 16px;
+  }
+  .admin-review-meta {
+    font-family: var(--font-mono); font-size: 0.74rem; color: var(--cream-dim);
+    margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .admin-review-author { color: var(--cream-dim); font-size: 0.9rem; margin: 4px 0 10px; }
+  .admin-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-approve { background: var(--leaf-bright); color: var(--ink); border: none; }
+  .btn-reject { background: transparent; color: var(--rust); border: 1.5px solid var(--rust); }
+  .btn-approve, .btn-reject {
+    font-family: var(--font-body); font-weight: 600; font-size: 0.9rem;
+    padding: 10px 18px; border-radius: var(--radius); cursor: pointer;
+  }
+  .btn-approve:disabled, .btn-reject:disabled { opacity: 0.5; cursor: not-allowed; }
+  .admin-empty { color: var(--cream-dim); }
+</style>
+</head>
+<body>
+
+<div id="key-gate" class="admin-wrap">
+  <span class="eyebrow">Internal tool</span>
+  <h1>Review Moderation</h1>
+  <p style="color: var(--cream-dim);">Enter your admin key to continue. It's remembered in this browser until you choose to forget it.</p>
+  <input type="password" id="admin-key-input" placeholder="Admin key" autocomplete="off">
+  <button class="btn btn-primary" id="unlock-btn">Unlock</button>
+</div>
+
+<div id="admin-panel" class="admin-wrap" style="display:none;">
+  <span class="eyebrow">Internal tool</span>
+  <h1>Pending Reviews</h1>
+  <div class="admin-toolbar">
+    <button class="btn btn-ghost" id="refresh-btn">Refresh</button>
+    <button class="btn btn-ghost" id="forget-key-btn">Forget key</button>
+  </div>
+  <div id="reviews-list"><p class="admin-empty">Loading…</p></div>
+</div>
+
+<script>
+(function () {
+  const KEY_STORAGE = "lol_admin_key";
+  const gate = document.getElementById("key-gate");
+  const panel = document.getElementById("admin-panel");
+  const list = document.getElementById("reviews-list");
+
+  function getKey() { return localStorage.getItem(KEY_STORAGE); }
+  function setKey(k) { localStorage.setItem(KEY_STORAGE, k); }
+  function clearKey() { localStorage.removeItem(KEY_STORAGE); }
+
+  function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+  }
+
+  function showGate() {
+    gate.style.display = "block";
+    panel.style.display = "none";
+  }
+
+  function showPanel() {
+    gate.style.display = "none";
+    panel.style.display = "block";
+    loadReviews();
+  }
+
+  async function loadReviews() {
+    list.innerHTML = '<p class="admin-empty">Loading…</p>';
+    try {
+      const res = await fetch("/api/admin/pending-reviews", {
+        headers: { "X-Admin-Key": getKey() },
+      });
+      if (res.status === 403) {
+        clearKey();
+        showGate();
+        return;
+      }
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      const data = await res.json();
+      renderReviews(data.reviews || []);
+    } catch (err) {
+      console.error(err);
+      list.innerHTML = '<p class="admin-empty">Something went wrong loading reviews. Try refreshing.</p>';
+    }
+  }
+
+  function renderReviews(reviews) {
+    if (reviews.length === 0) {
+      list.innerHTML = '<p class="admin-empty">No pending reviews right now.</p>';
+      return;
+    }
+
+    list.innerHTML = reviews
+      .map((r) => {
+        const date = new Date(r.created_at).toLocaleString();
+        const stars = "★".repeat(r.rating) + "☆".repeat(5 - r.rating);
+        return `
+          <div class="admin-review-card" data-review-id="${r.id}">
+            <div class="admin-review-meta">${escapeHtml(r.sku)} &middot; ${date}</div>
+            <p class="admin-review-author"><strong>${escapeHtml(r.customer_name)}</strong> (${escapeHtml(r.customer_email)}) &middot; <span class="stars">${stars}</span></p>
+            <p>${escapeHtml(r.review_text)}</p>
+            <div class="admin-actions">
+              <button class="btn-approve" data-action="approve">Approve</button>
+              <button class="btn-reject" data-action="reject">Reject</button>
+            </div>
+          </div>
+        `;
+      })
+      .join("");
+  }
+
+  list.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+
+    const card = btn.closest(".admin-review-card");
+    const reviewId = card.dataset.reviewId;
+    const action = btn.dataset.action;
+    const allButtons = card.querySelectorAll("button");
+    allButtons.forEach((b) => (b.disabled = true));
+
+    try {
+      const res = await fetch("/api/admin/review-action", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Key": getKey() },
+        body: JSON.stringify({ review_id: reviewId, action }),
+      });
+      if (!res.ok) throw new Error(`Failed (${res.status})`);
+      card.remove();
+      if (list.children.length === 0) {
+        list.innerHTML = '<p class="admin-empty">No pending reviews right now.</p>';
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong -- please try again.");
+      allButtons.forEach((b) => (b.disabled = false));
+    }
+  });
+
+  document.getElementById("unlock-btn").addEventListener("click", () => {
+    const val = document.getElementById("admin-key-input").value.trim();
+    if (val) {
+      setKey(val);
+      showPanel();
+    }
+  });
+
+  document.getElementById("admin-key-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("unlock-btn").click();
+  });
+
+  document.getElementById("refresh-btn").addEventListener("click", loadReviews);
+  document.getElementById("forget-key-btn").addEventListener("click", () => {
+    clearKey();
+    showGate();
+  });
+
+  if (getKey()) {
+    showPanel();
+  } else {
+    showGate();
+  }
+})();
+</script>
+</body>
+</html>
