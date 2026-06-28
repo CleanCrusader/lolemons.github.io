@@ -118,10 +118,13 @@ async function ensureAmazonFulfillmentChannel(env) {
 async function ensureChannelSellable(env, channelId, sellableId, asin, sku, title) {
   const existing = await veeqoFetch(env, `/channels/${channelId}/channel_sellables`).catch(() => []);
   if (Array.isArray(existing) && existing.some((cs) => cs.sellable_id === sellableId)) {
-    return;
+    return { alreadyLinked: true };
   }
 
-  await veeqoFetch(env, "/channel_sellables", {
+  // Was previously posting to the flat /channel_sellables path while GET
+  // used the channel-scoped one -- inconsistent, and the likely cause of
+  // the 404 seen in testing. Using the same nested path for both now.
+  const result = await veeqoFetch(env, `/channels/${channelId}/channel_sellables`, {
     method: "POST",
     body: {
       data: {
@@ -136,11 +139,33 @@ async function ensureChannelSellable(env, channelId, sellableId, asin, sku, titl
       },
     },
   });
+  return { alreadyLinked: false, result };
 }
 
-async function findFirstDeliveryMethodId(env) {
+// Lists every delivery method in the account, unfiltered -- used by the
+// setup-veeqo diagnostic so a human can see exactly what's configured and
+// identify which id genuinely maps to Standard shipping in Amazon MCF.
+// Never used to silently pick one -- see resolveDeliveryMethodId below.
+async function listDeliveryMethods(env) {
   const methods = await veeqoFetch(env, "/delivery_methods");
-  return Array.isArray(methods) && methods.length > 0 ? methods[0].id : null;
+  return Array.isArray(methods) ? methods : [];
+}
+
+// Requires an explicitly verified, pinned delivery method id per speed
+// (VEEQO_DELIVERY_METHOD_ID_STANDARD / _EXPEDITED, set after checking
+// listDeliveryMethods' output against Veeqo's own channel-level shipping-
+// speed mapping settings). Deliberately throws rather than falling back
+// to "just pick one" -- guessing here risks silently shipping at the
+// wrong speed/cost on every order, with no visible error.
+function resolveDeliveryMethodId(env, speed) {
+  const envVarName = speed === "expedited" ? "VEEQO_DELIVERY_METHOD_ID_EXPEDITED" : "VEEQO_DELIVERY_METHOD_ID_STANDARD";
+  if (!env[envVarName]) {
+    throw new Error(
+      `${envVarName} is not set. Run /api/admin/setup-veeqo to see available delivery methods, ` +
+        "confirm which one maps to this speed in Veeqo's channel settings, then set it as a Cloudflare secret."
+    );
+  }
+  return env[envVarName];
 }
 
 async function createOrderForFulfillment(env, { channelId, deliveryMethodId, customer, deliverTo, lineItems }) {
@@ -164,6 +189,7 @@ export {
   getAvailableStockBySku,
   ensureAmazonFulfillmentChannel,
   ensureChannelSellable,
-  findFirstDeliveryMethodId,
+  listDeliveryMethods,
+  resolveDeliveryMethodId,
   createOrderForFulfillment,
 };

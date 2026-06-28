@@ -20,7 +20,8 @@ import {
   findProductBySku,
   ensureAmazonFulfillmentChannel,
   ensureChannelSellable,
-  findFirstDeliveryMethodId,
+  listDeliveryMethods,
+  resolveDeliveryMethodId,
   createOrderForFulfillment,
 } from "./lib/veeqo.js";
 
@@ -74,6 +75,30 @@ async function handleCreateCheckoutSession(request, env) {
     mode: "payment",
     line_items: [{ price: item.stripe_price_id, quantity }],
     shipping_address_collection: { allowed_countries: ["US"] },
+    shipping_options: [
+      {
+        shipping_rate_data: {
+          type: "fixed_amount",
+          fixed_amount: { amount: 0, currency: "usd" },
+          display_name: "Standard Shipping",
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 3 },
+            maximum: { unit: "business_day", value: 5 },
+          },
+        },
+      },
+      {
+        shipping_rate_data: {
+          type: "fixed_amount",
+          fixed_amount: { amount: 500, currency: "usd" },
+          display_name: "Expedited Shipping",
+          delivery_estimate: {
+            minimum: { unit: "business_day", value: 1 },
+            maximum: { unit: "business_day", value: 2 },
+          },
+        },
+      },
+    ],
     expires_at: Math.floor(Date.now() / 1000) + HOLD_MINUTES * 60,
     success_url: `${env.SITE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${env.SITE_URL}/products.html`,
@@ -121,12 +146,34 @@ async function handleSetupVeeqo(request, env) {
       log.push(`SKU ${sku}: NOT FOUND in Veeqo's product catalog — add it there first, then re-run this.`);
       continue;
     }
-    await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
-    log.push(`SKU ${sku}: linked (sellable ${product.sellableId}, ASIN ${asin})`);
+    const linkResult = await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
+    log.push(
+      linkResult.alreadyLinked
+        ? `SKU ${sku}: already linked (sellable ${product.sellableId}, ASIN ${asin})`
+        : `SKU ${sku}: newly linked (sellable ${product.sellableId}, ASIN ${asin})`
+    );
   }
 
-  const deliveryMethodId = await findFirstDeliveryMethodId(env);
-  log.push(`Delivery method: ${deliveryMethodId ?? "NONE FOUND — add one in Veeqo first"}`);
+  const methods = await listDeliveryMethods(env);
+  if (methods.length === 0) {
+    log.push("Delivery methods: NONE FOUND — add at least one in Veeqo (Settings > Delivery Methods) first.");
+  } else {
+    log.push(`Delivery methods found (${methods.length}) — confirm in Veeqo's channel settings which of these`);
+    log.push(`map to Standard vs Expedited shipping in Amazon MCF, then set the two env vars below accordingly:`);
+    for (const m of methods) {
+      log.push(`  id=${m.id}  name="${m.name ?? "(unnamed)"}"  carrier=${m.carrier ?? "n/a"}`);
+    }
+  }
+  log.push(
+    env.VEEQO_DELIVERY_METHOD_ID_STANDARD
+      ? `Currently pinned VEEQO_DELIVERY_METHOD_ID_STANDARD: ${env.VEEQO_DELIVERY_METHOD_ID_STANDARD}`
+      : `VEEQO_DELIVERY_METHOD_ID_STANDARD is NOT set yet — Standard-shipping orders will fail at checkout until it is.`
+  );
+  log.push(
+    env.VEEQO_DELIVERY_METHOD_ID_EXPEDITED
+      ? `Currently pinned VEEQO_DELIVERY_METHOD_ID_EXPEDITED: ${env.VEEQO_DELIVERY_METHOD_ID_EXPEDITED}`
+      : `VEEQO_DELIVERY_METHOD_ID_EXPEDITED is NOT set yet — Expedited-shipping orders will fail at checkout until it is.`
+  );
 
   return new Response(log.join("\n"), { headers: { "content-type": "text/plain" } });
 }
@@ -136,7 +183,7 @@ async function handleSetupVeeqo(request, env) {
 // ---------------------------------------------------------------------------
 async function createVeeqoFulfillmentOrder(env, dtcOrder) {
   const channelId = await ensureAmazonFulfillmentChannel(env);
-  const deliveryMethodId = await findFirstDeliveryMethodId(env);
+  const deliveryMethodId = resolveDeliveryMethodId(env, dtcOrder.shipping_speed);
 
   const lineItems = [];
   for (const item of dtcOrder.items) {
@@ -188,6 +235,13 @@ async function handleCompleted(env, stripe, session) {
   const quantity = parseInt(session.metadata?.quantity || "1", 10);
   const shipping = fullSession.shipping_details || fullSession.customer_details;
 
+  // Stripe doesn't hand back "which option was selected" as a clean label
+  // -- it gives the actual amount charged for shipping. Since we only ever
+  // offer two prices ($0 and $5), checking the amount is simpler and just
+  // as reliable as fetching the underlying Shipping Rate object.
+  const shippingAmountCents = fullSession.shipping_cost?.amount_total ?? 0;
+  const shippingSpeed = shippingAmountCents > 0 ? "expedited" : "standard";
+
   const dtcOrderResult = await sbInsert(env, "dtc_orders", {
     stripe_session_id: session.id,
     stripe_payment_intent: session.payment_intent,
@@ -202,6 +256,8 @@ async function handleCompleted(env, stripe, session) {
     items: [{ sku, quantity }],
     amount_total: (fullSession.amount_total || 0) / 100,
     currency: fullSession.currency,
+    shipping_speed: shippingSpeed,
+    shipping_amount: shippingAmountCents / 100,
     status: "paid",
   });
 

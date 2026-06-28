@@ -69,6 +69,11 @@ Getting your own Amazon SP-API developer credentials (LWA) requires registering 
 3. **Make sure at least one delivery method exists** in Veeqo (Settings → Delivery Methods) — any one is fine, the setup script below just grabs the first one it finds.
 4. Add `VEEQO_API_KEY` as a Cloudflare secret (same place as the others), plus a new one called `ADMIN_SETUP_KEY` — make up any random password-like string for this one, it's just there to stop strangers from triggering setup.
 5. Once deployed, visit `https://<your-site>/api/admin/setup-veeqo?key=<whatever you set ADMIN_SETUP_KEY to>` in your browser. This is a one-time step (safe to re-run) that links your 3 products to a special "Amazon fulfillment" channel inside Veeqo. You'll see a plain-text log confirming what it did — if a SKU shows "NOT FOUND," it means step 2 still needs doing.
+6. **Important — shipping speed**: customers now choose between Standard (free) and Expedited (+$5) right on Stripe's checkout page. That same setup-veeqo log lists every delivery method configured in your Veeqo account (id, name, carrier). In Veeqo's own dashboard, check **Settings → Marketplace and Integrations** → your "Website (Custom Integration)" channel for whatever setting maps delivery methods to Amazon MCF shipping speed, and confirm which listed id corresponds to **Standard** and which to **Expedited**. Once confirmed, add two Cloudflare secrets:
+   - `VEEQO_DELIVERY_METHOD_ID_STANDARD`
+   - `VEEQO_DELIVERY_METHOD_ID_EXPEDITED`
+
+   Checkout will fail with a clear error for whichever speed isn't set yet — that's intentional, so a missing mapping can't silently ship at the wrong speed/cost.
 6. Also add `VEEQO_API_KEY` as a **GitHub** repo secret (Settings → Secrets and variables → Actions) — `sync-inventory.js` needs it there too, to keep the site's stock display current.
 
 One honest caveat: I built this against Veeqo's published API docs but can't call their API directly to test it from where I'm working, so a couple of field names (exactly how stock totals come back, the order-creation shape) are my best reading of their docs rather than something I've verified live. Worth keeping an eye on the Cloudflare deployment logs after your first real test order, in case a field name needs a small adjustment.

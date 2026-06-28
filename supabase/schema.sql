@@ -226,6 +226,14 @@ alter table dtc_orders enable row level security;
 -- No anon policies — only the Cloudflare Pages Function (service_role) can
 -- read or write this table.
 
+-- Added after the table already existed in production -- ALTER TABLE ...
+-- ADD COLUMN IF NOT EXISTS is the correct idempotent pattern here.
+-- CREATE TABLE IF NOT EXISTS would silently skip these entirely on an
+-- already-existing table, which is exactly what happened the first time
+-- these were added directly inside the block above.
+alter table dtc_orders add column if not exists shipping_speed text; -- standard | expedited
+alter table dtc_orders add column if not exists shipping_amount numeric; -- what they paid for shipping specifically
+
 -- =========================================================
 -- Verified-purchase reviews
 -- =========================================================
