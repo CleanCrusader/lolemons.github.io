@@ -265,6 +265,76 @@ async function handleStripeWebhook(request, env) {
 }
 
 // ---------------------------------------------------------------------------
+// POST /api/submit-review
+// ---------------------------------------------------------------------------
+const VERIFIED_ORDER_STATUSES = ["paid", "fulfilling", "shipped"];
+
+async function handleSubmitReview(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body", message: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const sku = String(body.sku || "").trim();
+  const email = String(body.email || "").trim().toLowerCase();
+  const name = String(body.name || "").trim();
+  const rating = Math.max(1, Math.min(5, parseInt(body.rating, 10) || 0));
+  const reviewText = String(body.review_text || "").trim();
+
+  if (!sku || !email || !name || !rating || !reviewText) {
+    return Response.json(
+      { error: "missing_fields", message: "Name, email, a star rating, and review text are all required." },
+      { status: 400 }
+    );
+  }
+
+  // Purchase verification: this is the actual gate, not just a badge.
+  // No completed order containing this SKU under this email = no review.
+  const orders = await sbSelect(env, "dtc_orders", { customer_email: `ilike.${email}` }, "items,status");
+  const verified = orders.some(
+    (o) =>
+      VERIFIED_ORDER_STATUSES.includes(o.status) &&
+      Array.isArray(o.items) &&
+      o.items.some((item) => item.sku === sku)
+  );
+
+  if (!verified) {
+    return Response.json(
+      {
+        error: "not_verified",
+        message: "We couldn't find a completed order for this product under that email address, so we can't publish a review.",
+      },
+      { status: 403 }
+    );
+  }
+
+  // One review per email per SKU -- a verified buyer can't spam the form.
+  const existing = await sbSelect(env, "reviews", { sku: `eq.${sku}`, customer_email: `ilike.${email}` }, "id");
+  if (existing.length > 0) {
+    return Response.json(
+      { error: "duplicate_review", message: "Looks like you've already submitted a review for this product." },
+      { status: 409 }
+    );
+  }
+
+  await sbInsert(env, "reviews", {
+    sku,
+    customer_name: name,
+    customer_email: email,
+    rating,
+    review_text: reviewText,
+    status: "pending",
+  });
+
+  return Response.json({
+    ok: true,
+    message: "Thanks! Your purchase is verified -- your review will appear once it's been checked by our team.",
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 export default {
@@ -282,6 +352,10 @@ export default {
 
       if (url.pathname === "/api/stripe-webhook" && request.method === "POST") {
         return await handleStripeWebhook(request, env);
+      }
+
+      if (url.pathname === "/api/submit-review" && request.method === "POST") {
+        return await handleSubmitReview(request, env);
       }
     } catch (err) {
       console.error(`Error handling ${url.pathname}:`, err);

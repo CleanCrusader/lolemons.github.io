@@ -223,3 +223,44 @@ create table if not exists dtc_orders (
 alter table dtc_orders enable row level security;
 -- No anon policies — only the Cloudflare Pages Function (service_role) can
 -- read or write this table.
+
+-- =========================================================
+-- Verified-purchase reviews
+-- =========================================================
+--
+-- Every review in this table is, by construction, from a verified buyer —
+-- the only way a row gets inserted is via the Worker's submit-review
+-- route, which checks dtc_orders for a completed purchase of that SKU
+-- under that email *before* allowing the insert. There's no "unverified"
+-- path, so every review the public sees is a verified purchase, no
+-- separate flag needed.
+--
+-- customer_email lives on the base table for that verification logic and
+-- spam-prevention (one review per email per SKU), but must never be
+-- publicly queryable — anon has zero policies on this table. Instead,
+-- public_reviews is a view that excludes the email column entirely and
+-- only ever shows approved rows, regardless of what RLS does or doesn't
+-- allow on the base table.
+
+create table if not exists reviews (
+  id bigint generated always as identity primary key,
+  sku text not null,
+  customer_name text not null,
+  customer_email text not null,
+  rating integer not null check (rating between 1 and 5),
+  review_text text not null,
+  status text not null default 'pending', -- pending | approved | rejected
+  created_at timestamptz not null default now()
+);
+
+alter table reviews enable row level security;
+-- Intentionally zero anon policies — service_role (the Worker) only.
+
+create or replace view public_reviews as
+  select id, sku, customer_name, rating, review_text, created_at
+  from reviews
+  where status = 'approved';
+
+grant select on public_reviews to anon;
+
+create index if not exists reviews_sku_idx on reviews (sku, status);
