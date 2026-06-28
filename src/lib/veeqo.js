@@ -147,20 +147,21 @@ async function listDeliveryMethods(env) {
   return Array.isArray(methods) ? methods : [];
 }
 
-// Requires an explicitly verified, pinned delivery method id (set via the
-// VEEQO_DELIVERY_METHOD_ID env var, after checking listDeliveryMethods'
-// output and Veeqo's own channel-level shipping-speed mapping settings).
-// Deliberately throws rather than falling back to "just pick one" --
-// guessing here means silently risking Expedited/Priority MCF costs on
-// every order instead of Standard, with no visible error.
-function resolveDeliveryMethodId(env) {
-  if (!env.VEEQO_DELIVERY_METHOD_ID) {
+// Requires an explicitly verified, pinned delivery method id per speed
+// (VEEQO_DELIVERY_METHOD_ID_STANDARD / _EXPEDITED, set after checking
+// listDeliveryMethods' output against Veeqo's own channel-level shipping-
+// speed mapping settings). Deliberately throws rather than falling back
+// to "just pick one" -- guessing here risks silently shipping at the
+// wrong speed/cost on every order, with no visible error.
+function resolveDeliveryMethodId(env, speed) {
+  const envVarName = speed === "expedited" ? "VEEQO_DELIVERY_METHOD_ID_EXPEDITED" : "VEEQO_DELIVERY_METHOD_ID_STANDARD";
+  if (!env[envVarName]) {
     throw new Error(
-      "VEEQO_DELIVERY_METHOD_ID is not set. Run /api/admin/setup-veeqo to see available delivery methods, " +
-        "confirm which one maps to Standard shipping in Veeqo's channel settings, then set that id as a Cloudflare secret."
+      `${envVarName} is not set. Run /api/admin/setup-veeqo to see available delivery methods, ` +
+        "confirm which one maps to this speed in Veeqo's channel settings, then set it as a Cloudflare secret."
     );
   }
-  return env.VEEQO_DELIVERY_METHOD_ID;
+  return env[envVarName];
 }
 
 async function createOrderForFulfillment(env, { channelId, deliveryMethodId, customer, deliverTo, lineItems }) {

@@ -214,6 +214,8 @@ create table if not exists dtc_orders (
   items jsonb not null,
   amount_total numeric,
   currency text,
+  shipping_speed text, -- standard | expedited
+  shipping_amount numeric, -- what they paid for shipping specifically
   status text not null default 'paid', -- paid | fulfilling | shipped | failed
   amazon_fulfillment_order_id text,
   tracking_number text,
