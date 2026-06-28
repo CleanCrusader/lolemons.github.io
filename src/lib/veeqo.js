@@ -118,10 +118,13 @@ async function ensureAmazonFulfillmentChannel(env) {
 async function ensureChannelSellable(env, channelId, sellableId, asin, sku, title) {
   const existing = await veeqoFetch(env, `/channels/${channelId}/channel_sellables`).catch(() => []);
   if (Array.isArray(existing) && existing.some((cs) => cs.sellable_id === sellableId)) {
-    return;
+    return { alreadyLinked: true };
   }
 
-  await veeqoFetch(env, "/channel_sellables", {
+  // Was previously posting to the flat /channel_sellables path while GET
+  // used the channel-scoped one -- inconsistent, and the likely cause of
+  // the 404 seen in testing. Using the same nested path for both now.
+  const result = await veeqoFetch(env, `/channels/${channelId}/channel_sellables`, {
     method: "POST",
     body: {
       data: {
@@ -136,6 +139,7 @@ async function ensureChannelSellable(env, channelId, sellableId, asin, sku, titl
       },
     },
   });
+  return { alreadyLinked: false, result };
 }
 
 // Lists every delivery method in the account, unfiltered -- used by the

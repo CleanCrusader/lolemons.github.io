@@ -146,8 +146,12 @@ async function handleSetupVeeqo(request, env) {
       log.push(`SKU ${sku}: NOT FOUND in Veeqo's product catalog — add it there first, then re-run this.`);
       continue;
     }
-    await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
-    log.push(`SKU ${sku}: linked (sellable ${product.sellableId}, ASIN ${asin})`);
+    const linkResult = await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
+    log.push(
+      linkResult.alreadyLinked
+        ? `SKU ${sku}: already linked (sellable ${product.sellableId}, ASIN ${asin})`
+        : `SKU ${sku}: newly linked (sellable ${product.sellableId}, ASIN ${asin})`
+    );
   }
 
   const methods = await listDeliveryMethods(env);
