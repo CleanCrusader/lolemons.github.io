@@ -138,9 +138,29 @@ async function ensureChannelSellable(env, channelId, sellableId, asin, sku, titl
   });
 }
 
-async function findFirstDeliveryMethodId(env) {
+// Lists every delivery method in the account, unfiltered -- used by the
+// setup-veeqo diagnostic so a human can see exactly what's configured and
+// identify which id genuinely maps to Standard shipping in Amazon MCF.
+// Never used to silently pick one -- see resolveDeliveryMethodId below.
+async function listDeliveryMethods(env) {
   const methods = await veeqoFetch(env, "/delivery_methods");
-  return Array.isArray(methods) && methods.length > 0 ? methods[0].id : null;
+  return Array.isArray(methods) ? methods : [];
+}
+
+// Requires an explicitly verified, pinned delivery method id (set via the
+// VEEQO_DELIVERY_METHOD_ID env var, after checking listDeliveryMethods'
+// output and Veeqo's own channel-level shipping-speed mapping settings).
+// Deliberately throws rather than falling back to "just pick one" --
+// guessing here means silently risking Expedited/Priority MCF costs on
+// every order instead of Standard, with no visible error.
+function resolveDeliveryMethodId(env) {
+  if (!env.VEEQO_DELIVERY_METHOD_ID) {
+    throw new Error(
+      "VEEQO_DELIVERY_METHOD_ID is not set. Run /api/admin/setup-veeqo to see available delivery methods, " +
+        "confirm which one maps to Standard shipping in Veeqo's channel settings, then set that id as a Cloudflare secret."
+    );
+  }
+  return env.VEEQO_DELIVERY_METHOD_ID;
 }
 
 async function createOrderForFulfillment(env, { channelId, deliveryMethodId, customer, deliverTo, lineItems }) {
@@ -164,6 +184,7 @@ export {
   getAvailableStockBySku,
   ensureAmazonFulfillmentChannel,
   ensureChannelSellable,
-  findFirstDeliveryMethodId,
+  listDeliveryMethods,
+  resolveDeliveryMethodId,
   createOrderForFulfillment,
 };

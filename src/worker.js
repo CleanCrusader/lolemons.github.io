@@ -20,7 +20,8 @@ import {
   findProductBySku,
   ensureAmazonFulfillmentChannel,
   ensureChannelSellable,
-  findFirstDeliveryMethodId,
+  listDeliveryMethods,
+  resolveDeliveryMethodId,
   createOrderForFulfillment,
 } from "./lib/veeqo.js";
 
@@ -125,8 +126,21 @@ async function handleSetupVeeqo(request, env) {
     log.push(`SKU ${sku}: linked (sellable ${product.sellableId}, ASIN ${asin})`);
   }
 
-  const deliveryMethodId = await findFirstDeliveryMethodId(env);
-  log.push(`Delivery method: ${deliveryMethodId ?? "NONE FOUND — add one in Veeqo first"}`);
+  const methods = await listDeliveryMethods(env);
+  if (methods.length === 0) {
+    log.push("Delivery methods: NONE FOUND — add at least one in Veeqo (Settings > Delivery Methods) first.");
+  } else {
+    log.push(`Delivery methods found (${methods.length}) — confirm in Veeqo's channel settings which of these`);
+    log.push(`maps to Standard shipping in Amazon MCF, then set VEEQO_DELIVERY_METHOD_ID to that id:`);
+    for (const m of methods) {
+      log.push(`  id=${m.id}  name="${m.name ?? "(unnamed)"}"  carrier=${m.carrier ?? "n/a"}`);
+    }
+  }
+  log.push(
+    env.VEEQO_DELIVERY_METHOD_ID
+      ? `Currently pinned VEEQO_DELIVERY_METHOD_ID: ${env.VEEQO_DELIVERY_METHOD_ID}`
+      : `VEEQO_DELIVERY_METHOD_ID is NOT set yet — orders will fail at checkout until it is.`
+  );
 
   return new Response(log.join("\n"), { headers: { "content-type": "text/plain" } });
 }
@@ -136,7 +150,7 @@ async function handleSetupVeeqo(request, env) {
 // ---------------------------------------------------------------------------
 async function createVeeqoFulfillmentOrder(env, dtcOrder) {
   const channelId = await ensureAmazonFulfillmentChannel(env);
-  const deliveryMethodId = await findFirstDeliveryMethodId(env);
+  const deliveryMethodId = resolveDeliveryMethodId(env);
 
   const lineItems = [];
   for (const item of dtcOrder.items) {
