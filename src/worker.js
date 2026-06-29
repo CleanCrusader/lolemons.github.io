@@ -146,12 +146,21 @@ async function handleSetupVeeqo(request, env) {
       log.push(`SKU ${sku}: NOT FOUND in Veeqo's product catalog — add it there first, then re-run this.`);
       continue;
     }
-    const linkResult = await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
-    log.push(
-      linkResult.alreadyLinked
-        ? `SKU ${sku}: already linked (sellable ${product.sellableId}, ASIN ${asin})`
-        : `SKU ${sku}: newly linked (sellable ${product.sellableId}, ASIN ${asin})`
-    );
+    try {
+      const linkResult = await ensureChannelSellable(env, channelId, product.sellableId, asin, sku, sku);
+      log.push(
+        linkResult.alreadyLinked
+          ? `SKU ${sku}: already linked (sellable ${product.sellableId}, ASIN ${asin})`
+          : `SKU ${sku}: newly linked (sellable ${product.sellableId}, ASIN ${asin})`
+      );
+    } catch (err) {
+      // Channel-sellable linking is for Buy Shipping Protection eligibility
+      // only -- not required for orders to actually be created/fulfilled
+      // (already confirmed working without it). Don't let a failure here
+      // block the rest of this diagnostic, especially the delivery
+      // methods list below, which is what actually matters right now.
+      log.push(`SKU ${sku}: channel-sellable link failed (non-blocking, BSP-only): ${err.message}`);
+    }
   }
 
   const methods = await listDeliveryMethods(env);
