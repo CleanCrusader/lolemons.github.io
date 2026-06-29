@@ -9,7 +9,7 @@
   "main": "./src/worker.js",
   "keep_vars": true,
   "vars": {
-    "SITE_URL": "https://lolemon.old-dew-b5d4.workers.dev",
+    "SITE_URL": "https://lolemons.com",
     "SUPABASE_URL": "https://fkdjfrvyytkiutmwkzap.supabase.co"
   },
   "assets": {
