@@ -27,46 +27,6 @@ import {
 
 const HOLD_MINUTES = 30; // Stripe requires expires_at to be at least 30 minutes out
 
-// ---------------------------------------------------------------------------
-// MAINTENANCE MODE -- flip back to false when ready to go live again. While
-// true, every page except the admin tool and /api/* (so webhooks, the admin
-// panel, and any in-flight checkout sessions keep working underneath) shows
-// a simple placeholder instead of the real site.
-// ---------------------------------------------------------------------------
-const MAINTENANCE_MODE = true;
-
-function maintenancePage() {
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="robots" content="noindex">
-<title>Lots of Lemon — Back Soon</title>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  body {
-    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-    background: #1B1B14; color: #FBF6E7; font-family: 'Work Sans', sans-serif; text-align: center; padding: 24px;
-  }
-  .wrap { max-width: 480px; }
-  h1 { font-family: 'Fraunces', serif; font-size: 2.4rem; color: #F5C400; margin-bottom: 0.4em; }
-  p { color: #cfc8ad; font-size: 1.05rem; line-height: 1.5; }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <h1>Back soon.</h1>
-    <p>We're doing a little work behind the scenes. Check back shortly — or reach us at <a href="mailto:contact@lolemons.com" style="color:#F5C400;">contact@lolemons.com</a> in the meantime.</p>
-  </div>
-</body>
-</html>`;
-  return new Response(html, {
-    status: 503,
-    headers: { "content-type": "text/html; charset=utf-8", "retry-after": "43200" },
-  });
-}
-
 // SKU -> Amazon ASIN, used only by the one-time /api/admin/setup-veeqo route
 // to link each product to the Amazon fulfillment channel in Veeqo.
 const SKU_TO_ASIN = {
@@ -635,10 +595,6 @@ async function handleReviewAction(request, env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-
-    if (MAINTENANCE_MODE && !url.pathname.startsWith("/api/") && url.pathname !== "/admin-reviews.html") {
-      return maintenancePage();
-    }
 
     try {
       if (url.pathname === "/api/admin/setup-veeqo" && request.method === "GET") {
