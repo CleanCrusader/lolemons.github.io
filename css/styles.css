@@ -1,20 +1,22 @@
 /* =========================================================
    Lots of Lemon — design tokens
-   Palette: warm ink, lemon zest, pressed cream, rind green.
-   No orange — that lane belongs to the competitor; this
-   brand owns lemon specifically, not "citrus" generally.
+   Palette: white base, lemon zest, fresh leaf green, deep
+   forest ink (now used for text/accents, not as the main
+   background). No orange — that lane belongs to the
+   competitor; this brand owns lemon specifically, not
+   "citrus" generally.
    ========================================================= */
 
 :root {
-  --ink: #181811;
-  --char: #232318;
-  --char-2: #2b2b1d;
+  --ink: #1f2e1a;
+  --char: #f2f7ec;
+  --char-2: #e3edd5;
   --zest: #f5c400;
-  --zest-deep: #d9ad00;
-  --cream: #fbf6e7;
-  --cream-dim: #e9e2cc;
-  --leaf: #57683c;
-  --leaf-bright: #7c9456;
+  --zest-deep: #9c7a00;
+  --cream: #ffffff;
+  --cream-dim: #5c6354;
+  --leaf: #3d5c2c;
+  --leaf-bright: #5c8a3a;
   --rust: #a8431f;
 
   --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
@@ -35,8 +37,8 @@ html { scroll-behavior: smooth; }
 
 body {
   margin: 0;
-  background: var(--ink);
-  color: var(--cream);
+  background: var(--cream);
+  color: var(--ink);
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.55;
@@ -61,7 +63,7 @@ h1, h2, h3, h4 {
   font-weight: 600;
   line-height: 1.1;
   margin: 0 0 0.5em;
-  color: var(--cream);
+  color: var(--ink);
 }
 
 .eyebrow {
@@ -95,7 +97,7 @@ h1, h2, h3, h4 {
 .btn:hover { text-decoration: none; transform: translateY(-1px); }
 .btn-primary { background: var(--zest); color: var(--ink); }
 .btn-primary:hover { background: var(--zest-deep); }
-.btn-ghost { background: transparent; color: var(--cream); border-color: rgba(251,246,231,0.35); }
+.btn-ghost { background: transparent; color: var(--ink); border-color: rgba(31,46,26,0.3); }
 .btn-ghost:hover { border-color: var(--zest); color: var(--zest); }
 
 /* ---------- Header ---------- */
@@ -103,7 +105,7 @@ h1, h2, h3, h4 {
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(24,24,17,0.92);
+  background: rgba(255,255,255,0.92);
   backdrop-filter: blur(6px);
   border-bottom: 1px solid rgba(245,196,0,0.18);
 }
@@ -117,7 +119,7 @@ h1, h2, h3, h4 {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: 1.3rem;
-  color: var(--cream);
+  color: var(--ink);
   letter-spacing: 0.01em;
   display: flex;
   align-items: baseline;
@@ -136,14 +138,14 @@ h1, h2, h3, h4 {
   font-size: 0.92rem;
   font-weight: 500;
 }
-.nav-links a { color: var(--cream); }
+.nav-links a { color: var(--ink); }
 .nav-links a:hover { color: var(--zest); text-decoration: none; }
 .nav-cta { display: flex; align-items: center; gap: 16px; }
 .nav-toggle {
   display: none;
   background: none;
   border: none;
-  color: var(--cream);
+  color: var(--ink);
   font-size: 1.6rem;
   cursor: pointer;
 }
@@ -151,7 +153,7 @@ h1, h2, h3, h4 {
 @media (max-width: 760px) {
   .nav-links { 
     position: absolute; top: 76px; left: 0; right: 0;
-    background: var(--ink);
+    background: var(--cream);
     flex-direction: column;
     padding: 20px 24px 28px;
     gap: 16px;
@@ -367,7 +369,7 @@ h1, h2, h3, h4 {
 
 /* ---------- FAQ ---------- */
 .faq-item {
-  border-bottom: 1px solid rgba(24,24,17,0.12);
+  border-bottom: 1px solid rgba(31,46,26,0.12);
   padding: 18px 0;
 }
 .faq-item summary {
@@ -392,16 +394,16 @@ h1, h2, h3, h4 {
 
 /* ---------- Final CTA ---------- */
 .cta-banner {
-  background: linear-gradient(120deg, var(--leaf) 0%, #3d4a29 100%);
+  background: linear-gradient(120deg, var(--leaf) 0%, #25401a 100%);
   text-align: center;
   padding: 80px 0;
 }
 .cta-banner h2 { font-size: clamp(1.8rem, 3.4vw, 2.6rem); }
-.cta-banner p { color: rgba(251,246,231,0.85); max-width: 480px; margin: 0 auto 2em; }
+.cta-banner p { color: rgba(255,255,255,0.85); max-width: 480px; margin: 0 auto 2em; }
 
 /* ---------- Footer ---------- */
 .site-footer {
-  background: var(--ink);
+  background: var(--char);
   border-top: 1px solid rgba(245,196,0,0.14);
   padding: 56px 0 32px;
   font-size: 0.92rem;
@@ -426,7 +428,7 @@ h1, h2, h3, h4 {
 .footer-grid a { color: var(--cream-dim); }
 .footer-grid a:hover { color: var(--zest); }
 .footer-bottom {
-  border-top: 1px solid rgba(251,246,231,0.1);
+  border-top: 1px solid rgba(31,46,26,0.12);
   padding-top: 24px;
   display: flex;
   justify-content: space-between;
@@ -447,13 +449,13 @@ h1, h2, h3, h4 {
   align-items: start;
   padding-bottom: 40px;
   margin-bottom: 40px;
-  border-bottom: 1px solid rgba(251,246,231,0.1);
+  border-bottom: 1px solid rgba(31,46,26,0.12);
 }
 .newsletter-strip h5 {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: 1.15rem;
-  color: var(--cream);
+  color: var(--ink);
   text-transform: none;
   letter-spacing: normal;
   margin-bottom: 0.3em;
@@ -469,9 +471,9 @@ h1, h2, h3, h4 {
   flex: 1 1 180px;
   padding: 11px 14px;
   border-radius: var(--radius);
-  border: 1.5px solid rgba(251,246,231,0.25);
-  background: var(--char);
-  color: var(--cream);
+  border: 1.5px solid rgba(31,46,26,0.25);
+  background: #fff;
+  color: var(--ink);
   font-family: var(--font-body);
   font-size: 0.9rem;
 }
@@ -546,7 +548,7 @@ h1, h2, h3, h4 {
 
 .review-item {
   padding: 14px 0;
-  border-bottom: 1px solid rgba(251,246,231,0.08);
+  border-bottom: 1px solid rgba(31,46,26,0.1);
 }
 .review-item-head {
   display: flex;
@@ -562,7 +564,7 @@ h1, h2, h3, h4 {
 .review-date { font-family: var(--font-mono); }
 .review-text {
   font-size: 0.92rem;
-  color: var(--cream);
+  color: var(--ink);
   margin: 0;
 }
 .review-empty {
@@ -577,7 +579,7 @@ h1, h2, h3, h4 {
   font-size: 0.68rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  background: rgba(87,104,60,0.25);
+  background: rgba(61,92,44,0.15);
   color: var(--leaf-bright);
   border: 1px solid var(--leaf-bright);
   border-radius: 999px;
@@ -638,9 +640,9 @@ h1, h2, h3, h4 {
   padding: 10px 12px;
   margin-bottom: 10px;
   border-radius: var(--radius);
-  border: 1.5px solid rgba(245,196,0,0.25);
-  background: var(--ink);
-  color: var(--cream);
+  border: 1.5px solid rgba(245,196,0,0.4);
+  background: #fff;
+  color: var(--ink);
   font-family: var(--font-body);
   font-size: 0.9rem;
 }
@@ -673,9 +675,9 @@ h1, h2, h3, h4 {
   width: 64px;
   padding: 12px 10px;
   border-radius: var(--radius);
-  border: 1.5px solid rgba(245,196,0,0.25);
-  background: var(--ink);
-  color: var(--cream);
+  border: 1.5px solid rgba(245,196,0,0.4);
+  background: #fff;
+  color: var(--ink);
   font-family: var(--font-mono);
   text-align: center;
 }
@@ -706,7 +708,7 @@ h1, h2, h3, h4 {
   content: "";
   flex: 1;
   height: 1px;
-  background: rgba(251,246,231,0.15);
+  background: rgba(31,46,26,0.15);
 }
 
 .page-hero {
@@ -735,7 +737,7 @@ h1, h2, h3, h4 {
 .field input, .field textarea {
   width: 100%;
   padding: 12px 14px;
-  border: 1.5px solid rgba(24,24,17,0.25);
+  border: 1.5px solid rgba(31,46,26,0.25);
   border-radius: var(--radius);
   font-family: var(--font-body);
   font-size: 0.95rem;
