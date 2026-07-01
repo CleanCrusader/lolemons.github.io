@@ -23,8 +23,8 @@
       </ul>
     </nav>
     <div class="nav-cta">
-      <a href="products.html" class="btn btn-ghost">Shop Now</a>
-      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      <a href="products.html" class="btn btn-primary" style="padding:10px 22px;font-size:0.88rem;">Shop Now</a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">&#9776;</button>
     </div>
   </div>
 </header>
@@ -94,8 +94,8 @@
   <div class="wrap">
     <div class="footer-grid">
       <div>
-        <h5>Lots of Lemon</h5>
-        <p>Cleaning and pet-care products built around real cold-pressed lemon oil, not a synthetic fragrance standing in for it.</p>
+        <div class="footer-brand">Lots of <em>Lemon</em></div>
+        <p class="footer-tagline">Cleaning and pet-care products built around real cold-pressed lemon oil, not a synthetic fragrance standing in for it.</p>
       </div>
       <div>
         <h5>Shop</h5>
@@ -124,12 +124,22 @@
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 Lots of Lemon LLC. All rights reserved.</span>
+      <span>&copy; 2026 Lots of Lemon LLC. All rights reserved.</span>
       <span>Made with real lemons.</span>
     </div>
   </div>
 </footer>
 
 <script src="js/main.js"></script>
+<script>
+  const toggle = document.querySelector(".nav-toggle");
+  const links = document.querySelector(".nav-links");
+  if (toggle && links) {
+    toggle.addEventListener("click", () => {
+      const open = links.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", open);
+    });
+  }
+</script>
 </body>
 </html>
