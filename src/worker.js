@@ -287,7 +287,12 @@ async function handleCompleted(env, stripe, session) {
       }
     );
   } catch (err) {
-    console.error("Veeqo fulfillment order failed:", err);
+    // Log the full error detail so it shows in Cloudflare's log stream.
+    // After a failure, open Cloudflare → Workers & Pages → lolemon →
+    // Logs → "Begin log stream", then replay the webhook in Stripe's
+    // Dashboard (Workbench → Event destinations → your endpoint →
+    // find the event → "Resend") to see this message in real time.
+    console.error("Veeqo fulfillment order failed:", err?.message ?? err);
     await sbPatch(
       env,
       "dtc_orders",
