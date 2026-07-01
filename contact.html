@@ -33,8 +33,8 @@
       </ul>
     </nav>
     <div class="nav-cta">
-      <a href="products.html" class="btn btn-ghost">Shop Now</a>
-      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+      <a href="products.html" class="btn btn-primary" style="padding:10px 22px;font-size:0.88rem;">Shop Now</a>
+      <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">&#9776;</button>
     </div>
   </div>
 </header>
@@ -94,8 +94,8 @@
   <div class="wrap">
     <div class="footer-grid">
       <div>
-        <h5>Lots of Lemon</h5>
-        <p>Cleaning and pet-care products built around real cold-pressed lemon oil, not a synthetic fragrance standing in for it.</p>
+        <div class="footer-brand">Lots of <em>Lemon</em></div>
+        <p class="footer-tagline">Cleaning and pet-care products built around real cold-pressed lemon oil, not a synthetic fragrance standing in for it.</p>
       </div>
       <div>
         <h5>Shop</h5>
@@ -109,8 +109,8 @@
       <div>
         <h5>Company</h5>
         <ul>
-            <li><a href="about.html">Our Story</a></li>
-<li><a href="contact.html">Contact</a></li>
+          <li><a href="about.html">Our Story</a></li>
+          <li><a href="contact.html">Contact</a></li>
         </ul>
       </div>
       <div>
@@ -123,24 +123,8 @@
         </ul>
       </div>
     </div>
-    <div class="newsletter-strip">
-      <div>
-        <h5>Get cleaning tips &amp; first dibs on new products</h5>
-      </div>
-      <form data-subscribe-form class="newsletter-form">
-        <input type="text" name="name" placeholder="First name (optional)" aria-label="First name">
-        <input type="email" name="email" placeholder="you@email.com" required aria-label="Email address">
-        <label class="consent-label">
-          <input type="checkbox" name="consent" required>
-          I'd like to receive occasional emails about new products and cleaning tips.
-        </label>
-        <button type="submit" class="btn btn-primary">Subscribe</button>
-        <p data-subscribe-status class="subscribe-status" role="status"></p>
-      </form>
-    </div>
-
     <div class="footer-bottom">
-      <span>© 2026 Lots of Lemon LLC. All rights reserved.</span>
+      <span>&copy; 2026 Lots of Lemon LLC. All rights reserved.</span>
       <span>Made with real lemons.</span>
     </div>
   </div>
@@ -148,5 +132,15 @@
 
 <script src="js/main.js"></script>
 <script src="js/subscribe.js"></script>
+<script>
+  const toggle = document.querySelector(".nav-toggle");
+  const links = document.querySelector(".nav-links");
+  if (toggle && links) {
+    toggle.addEventListener("click", () => {
+      const open = links.classList.toggle("open");
+      toggle.setAttribute("aria-expanded", open);
+    });
+  }
+</script>
 </body>
 </html>
