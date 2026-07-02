@@ -243,36 +243,52 @@ async function handleCompleted(env, stripe, session) {
   const sku = session.metadata?.sku;
   const quantity = parseInt(session.metadata?.quantity || "1", 10);
   const shipping = fullSession.shipping_details || fullSession.customer_details;
-
-  // Stripe doesn't hand back "which option was selected" as a clean label
-  // -- it gives the actual amount charged for shipping. Since we only ever
-  // offer two prices ($0 and $5), checking the amount is simpler and just
-  // as reliable as fetching the underlying Shipping Rate object.
   const shippingAmountCents = fullSession.shipping_cost?.amount_total ?? 0;
   const shippingSpeed = shippingAmountCents > 0 ? "expedited" : "standard";
 
-  const dtcOrderResult = await sbInsert(env, "dtc_orders", {
-    stripe_session_id: session.id,
-    stripe_payment_intent: session.payment_intent,
-    customer_email: fullSession.customer_details?.email,
-    customer_name: shipping?.name,
-    ship_address_line1: shipping?.address?.line1,
-    ship_address_line2: shipping?.address?.line2,
-    ship_city: shipping?.address?.city,
-    ship_state: shipping?.address?.state,
-    ship_postal_code: shipping?.address?.postal_code,
-    ship_country: shipping?.address?.country,
-    items: [{ sku, quantity }],
-    amount_total: (fullSession.amount_total || 0) / 100,
-    currency: fullSession.currency,
-    shipping_speed: shippingSpeed,
-    shipping_amount: shippingAmountCents / 100,
-    status: "paid",
-  });
+  // Stripe retries webhooks when it doesn't get a fast 2xx response --
+  // check whether this session is already recorded before inserting, so
+  // retries don't crash on the unique constraint and instead just retry
+  // the Veeqo call (which is what actually needs to succeed).
+  let order;
+  const existing = await sbSelect(
+    env, "dtc_orders", { stripe_session_id: `eq.${session.id}` }, "*"
+  );
 
-  await sbRpc(env, "consume_inventory_hold", { p_session_id: session.id });
+  if (existing.length > 0) {
+    order = existing[0];
+    if (order.status !== "failed") {
+      // Already fulfilling or fulfilled -- nothing to do, idempotent return.
+      console.log(`Webhook replay for ${session.id}: already has status '${order.status}', skipping.`);
+      return;
+    }
+    // status === "failed": the insert worked last time but Veeqo didn't.
+    // Fall through and retry Veeqo with the existing row.
+    console.log(`Webhook replay for ${session.id}: retrying Veeqo after previous failure.`);
+  } else {
+    // First time seeing this session.
+    const dtcOrderResult = await sbInsert(env, "dtc_orders", {
+      stripe_session_id: session.id,
+      stripe_payment_intent: session.payment_intent,
+      customer_email: fullSession.customer_details?.email,
+      customer_name: shipping?.name,
+      ship_address_line1: shipping?.address?.line1,
+      ship_address_line2: shipping?.address?.line2,
+      ship_city: shipping?.address?.city,
+      ship_state: shipping?.address?.state,
+      ship_postal_code: shipping?.address?.postal_code,
+      ship_country: shipping?.address?.country,
+      items: [{ sku, quantity }],
+      amount_total: (fullSession.amount_total || 0) / 100,
+      currency: fullSession.currency,
+      shipping_speed: shippingSpeed,
+      shipping_amount: shippingAmountCents / 100,
+      status: "paid",
+    });
 
-  const order = Array.isArray(dtcOrderResult) ? dtcOrderResult[0] : dtcOrderResult;
+    await sbRpc(env, "consume_inventory_hold", { p_session_id: session.id });
+    order = Array.isArray(dtcOrderResult) ? dtcOrderResult[0] : dtcOrderResult;
+  }
 
   try {
     const fulfillment = await createVeeqoFulfillmentOrder(env, order);
@@ -287,7 +303,7 @@ async function handleCompleted(env, stripe, session) {
       }
     );
   } catch (err) {
-    console.error("Veeqo fulfillment order failed:", err);
+    console.error("Veeqo fulfillment order failed:", err?.message ?? err);
     await sbPatch(
       env,
       "dtc_orders",
