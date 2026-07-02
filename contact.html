@@ -43,28 +43,22 @@
   <div class="wrap">
     <span class="eyebrow">Contact</span>
     <h1>Questions, orders, wholesale.</h1>
-    <p>Most order questions are fastest through Amazon directly. For everything else, reach us below.</p>
+    <p>Have a question about a product, an order, or carrying Lots of Lemon in your store? Send us a message and we'll get back to you.</p>
   </div>
 </section>
 
-<section class="section section-cream">
+<section class="section">
   <div class="wrap contact-grid">
     <div>
-      <h2>Send a message</h2>
-      <p style="color:#4a4a3a; margin-bottom: 28px;">
-        This form posts to
-        <a href="https://formspree.io" style="color:var(--rust);">Formspree</a>
-        — a free form-backend service, since this site is hosted on GitHub Pages with no server of its own.
-        Replace <code>YOUR_FORM_ID</code> below with your own Formspree endpoint after signing up.
-      </p>
-      <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+      <h2 style="margin-bottom:20px;">Send a message</h2>
+      <form class="contact-form" data-contact-form>
         <div class="field">
           <label for="name">Name</label>
-          <input type="text" id="name" name="name" required>
+          <input type="text" id="name" name="name" required autocomplete="name">
         </div>
         <div class="field">
           <label for="email">Email</label>
-          <input type="email" id="email" name="email" required>
+          <input type="email" id="email" name="email" required autocomplete="email">
         </div>
         <div class="field">
           <label for="topic">Topic</label>
@@ -74,18 +68,25 @@
           <label for="message">Message</label>
           <textarea id="message" name="message" rows="5" required></textarea>
         </div>
-        <button type="submit" class="btn btn-primary">Send Message</button>
+        <!-- Honeypot: hidden from humans, bots fill it and get silently dropped -->
+        <div class="honeypot" aria-hidden="true">
+          <label for="company">Company (leave blank)</label>
+          <input type="text" id="company" name="company" tabindex="-1" autocomplete="off">
+        </div>
+        <button type="submit" class="btn btn-primary btn-lg">Send Message</button>
+        <p class="contact-status" data-contact-status></p>
       </form>
     </div>
 
     <div>
-      <h2>Other ways to reach us</h2>
-      <p style="color:#4a4a3a;">
-        <strong>Email:</strong> <a href="mailto:contact@lolemons.com" style="color:var(--rust);">contact@lolemons.com</a><br><br>
-        <strong>Amazon orders:</strong> Order status, returns, and shipping for items bought on Amazon are handled fastest through your Amazon order page — go to
-        Your Orders → the order in question → Get Help.<br><br>
-        <strong>Wholesale &amp; retail partnerships:</strong> Tell us your store, expected volume, and where you're located, and we'll follow up with pricing.
-      </p>
+      <div class="contact-info-card">
+        <h3>Email us directly</h3>
+        <p><a href="mailto:contact@lolemons.com">contact@lolemons.com</a></p>
+        <h3>Wholesale &amp; retail</h3>
+        <p>Tell us your store, expected volume, and location, and we'll follow up with pricing.</p>
+        <h3>Response time</h3>
+        <p>We're a small team — we usually reply within one to two business days.</p>
+      </div>
     </div>
   </div>
 </section>
@@ -132,6 +133,7 @@
 
 <script src="js/main.js"></script>
 <script src="js/subscribe.js"></script>
+<script src="js/contact.js"></script>
 <script>
   const toggle = document.querySelector(".nav-toggle");
   const links = document.querySelector(".nav-links");
