@@ -722,6 +722,58 @@ nav { flex: 1; }
 .use-card h3 { font-size: 0.95rem; margin-bottom: 6px; }
 .use-card p { font-size: 0.82rem; color: var(--text-muted); }
 
+/* --- Contact page ------------------------------------- */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 56px;
+  align-items: start;
+}
+.contact-form .field { margin-bottom: 18px; }
+.contact-form label {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: var(--radius);
+  border: 2px solid rgba(26,46,16,0.15);
+  background: #fff;
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-family: var(--font-body);
+  transition: border-color 0.15s;
+}
+.contact-form input:focus,
+.contact-form textarea:focus { outline: none; border-color: var(--zest); }
+.contact-form textarea { resize: vertical; min-height: 130px; }
+.contact-form .honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.contact-status { margin-top: 12px; font-size: 0.9rem; font-weight: 600; min-height: 1.3em; }
+.contact-info-card {
+  background: var(--leaf-pale);
+  border: 1px solid rgba(74,124,32,0.2);
+  border-radius: var(--radius-lg);
+  padding: 28px;
+}
+.contact-info-card h3 { font-size: 1.05rem; margin-bottom: 6px; }
+.contact-info-card p { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 20px; }
+.contact-info-card p:last-child { margin-bottom: 0; }
+.contact-info-card a { color: var(--leaf); font-weight: 600; }
+@media (max-width: 860px) {
+  .contact-grid { grid-template-columns: 1fr; gap: 32px; }
+}
+
 /* --- Footer ------------------------------------------- */
 .site-footer {
   background: var(--ink);

@@ -402,6 +402,77 @@ async function notifyOnNegativeReview(env, { sku, name, email, rating, reviewTex
   }
 }
 
+// ---------------------------------------------------------------------------
+// POST /api/contact
+// Contact form -> emails contact@lolemons.com via Resend, reply-to set to
+// the sender so a normal "Reply" reaches them directly.
+// ---------------------------------------------------------------------------
+async function handleContact(request, env, ctx) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ error: "invalid_body", message: "Invalid request." }, { status: 400 });
+  }
+
+  const name = String(body.name || "").trim();
+  const email = String(body.email || "").trim();
+  const topic = String(body.topic || "").trim();
+  const message = String(body.message || "").trim();
+
+  // Basic validation
+  if (!name || !email || !message) {
+    return Response.json(
+      { error: "missing_fields", message: "Please fill in your name, email, and a message." },
+      { status: 400 }
+    );
+  }
+  // Loose email sanity check
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return Response.json({ error: "bad_email", message: "That email address doesn't look right." }, { status: 400 });
+  }
+  // Length guardrails (prevent abuse / oversized payloads)
+  if (name.length > 120 || email.length > 200 || topic.length > 200 || message.length > 5000) {
+    return Response.json({ error: "too_long", message: "One of your fields is too long." }, { status: 400 });
+  }
+
+  // Honeypot: if the hidden "company" field is filled, silently accept but
+  // don't send (bots fill every field; humans never see this one).
+  if (String(body.company || "").trim() !== "") {
+    return Response.json({ ok: true, message: "Thanks — your message has been sent." });
+  }
+
+  const esc = (s) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+
+  const fromAddress = env.REVIEWS_FROM_EMAIL || "reviews@lolemons.com";
+
+  try {
+    await sendEmail(env, {
+      to: "contact@lolemons.com",
+      from: fromAddress,
+      replyTo: email,
+      subject: topic ? `Contact form: ${esc(topic)}` : `Contact form message from ${esc(name)}`,
+      html: `
+        <p><strong>From:</strong> ${esc(name)} (${esc(email)})</p>
+        ${topic ? `<p><strong>Topic:</strong> ${esc(topic)}</p>` : ""}
+        <p><strong>Message:</strong></p>
+        <p>${esc(message).replace(/\n/g, "<br>")}</p>
+        <hr>
+        <p style="color:#888;font-size:12px;">Reply directly to this email to respond to ${esc(name)}.</p>
+      `,
+    });
+  } catch (err) {
+    console.error("Contact form email failed:", err?.message ?? err);
+    return Response.json(
+      { error: "send_failed", message: "Something went wrong sending your message. Please email contact@lolemons.com directly." },
+      { status: 500 }
+    );
+  }
+
+  return Response.json({ ok: true, message: "Thanks — your message has been sent. We'll get back to you soon." });
+}
+
 async function handleSubmitReview(request, env, ctx) {
   let body;
   try {
@@ -627,6 +698,10 @@ export default {
 
       if (url.pathname === "/api/submit-review" && request.method === "POST") {
         return await handleSubmitReview(request, env, ctx);
+      }
+
+      if (url.pathname === "/api/contact" && request.method === "POST") {
+        return await handleContact(request, env, ctx);
       }
 
       if (url.pathname === "/api/admin/auth-status" && request.method === "GET") {
