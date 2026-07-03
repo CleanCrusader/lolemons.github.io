@@ -113,12 +113,13 @@ create table if not exists inventory_holds (
   id bigint generated always as identity primary key,
   sku text not null references inventory(sku),
   quantity integer not null,
-  stripe_session_id text unique not null,
+  stripe_session_id text not null,
   status text not null default 'active', -- active | consumed | released
   expires_at timestamptz not null,
   created_at timestamptz not null default now()
 );
 
+alter table inventory_holds drop constraint if exists inventory_holds_stripe_session_id_key;
 alter table inventory_holds enable row level security;
 -- No anon policies at all — holds are purely a server-side bookkeeping
 -- mechanism between create-checkout-session and the Stripe webhook.
@@ -167,22 +168,18 @@ $$;
 -- waiting for the next FBA inventory poll), so the site reflects the
 -- sale immediately.
 create or replace function consume_inventory_hold(p_session_id text)
-returns void
-language plpgsql
-as $$
-declare
-  v_sku text;
-  v_qty integer;
+returns void language plpgsql as $$
+declare r record;
 begin
-  select sku, quantity into v_sku, v_qty
-    from inventory_holds
+  for r in
+    select sku, quantity from inventory_holds
+    where stripe_session_id = p_session_id and status = 'active'
+  loop
+    update inventory set available_quantity = greatest(available_quantity - r.quantity, 0), updated_at = now()
+      where sku = r.sku;
+  end loop;
+  update inventory_holds set status = 'consumed'
     where stripe_session_id = p_session_id and status = 'active';
-
-  if v_sku is not null then
-    update inventory_holds set status = 'consumed' where stripe_session_id = p_session_id;
-    update inventory set available_quantity = greatest(available_quantity - v_qty, 0), updated_at = now()
-      where sku = v_sku;
-  end if;
 end;
 $$;
 
