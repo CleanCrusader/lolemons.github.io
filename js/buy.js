@@ -63,7 +63,7 @@ async function startCheckout(card) {
   const qtyInput = card.querySelector("[data-buy-qty]");
   const buyBtn = card.querySelector("[data-buy-button]");
   const status = card.querySelector("[data-buy-status]");
-  const quantity = parseInt(qtyInput?.value, 10) || 1;
+  const quantity = Math.max(1, Math.min(10, parseInt(qtyInput?.value, 10) || 1));
 
   buyBtn.disabled = true;
   const originalText = buyBtn.textContent;

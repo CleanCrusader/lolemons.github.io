@@ -124,6 +124,54 @@ async function handleCreateCheckoutSession(request, env) {
   return Response.json({ url: session.url });
 }
 
+// POST /api/create-cart-checkout — body: { items: [{ sku, quantity }, ...] }
+async function handleCreateCartCheckout(request, env) {
+  if (!env.SITE_URL) return Response.json({ error: "config_error", message: "Missing SITE_URL" }, { status: 500 });
+  let body;
+  try { body = await request.json(); } catch { return Response.json({ error: "Invalid JSON body" }, { status: 400 }); }
+
+  const items = (Array.isArray(body.items) ? body.items : [])
+    .map((i) => ({ sku: String(i.sku || "").trim(), quantity: Math.max(1, Math.min(10, parseInt(i.quantity, 10) || 1)) }))
+    .filter((i) => i.sku);
+  if (items.length === 0) return Response.json({ error: "empty_cart" }, { status: 400 });
+
+  const lineItems = [];
+  for (const it of items) {
+    const rows = await sbSelect(env, "inventory", { sku: `eq.${it.sku}` });
+    const inv = rows[0];
+    if (!inv || !inv.stripe_price_id) return Response.json({ error: "unknown_product", message: `Unknown: ${it.sku}` }, { status: 404 });
+    lineItems.push({ price: inv.stripe_price_id, quantity: it.quantity });
+  }
+
+  const stripe = getStripe(env);
+  const session = await stripe.checkout.sessions.create({
+    mode: "payment",
+    line_items: lineItems,
+    shipping_address_collection: { allowed_countries: ["US"] },
+    shipping_options: [
+      { shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: 0, currency: "usd" }, display_name: "Standard Shipping", delivery_estimate: { minimum: { unit: "business_day", value: 3 }, maximum: { unit: "business_day", value: 5 } } } },
+      { shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: 500, currency: "usd" }, display_name: "Expedited Shipping", delivery_estimate: { minimum: { unit: "business_day", value: 1 }, maximum: { unit: "business_day", value: 2 } } } },
+    ],
+    expires_at: Math.floor(Date.now() / 1000) + HOLD_MINUTES * 60,
+    success_url: `${env.SITE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${env.SITE_URL}/products.html`,
+    metadata: { cart: JSON.stringify(items) },
+  });
+
+  const reserved = [];
+  let failed = null;
+  for (const it of items) {
+    const ok = await sbRpc(env, "try_reserve_inventory", { p_sku: it.sku, p_qty: it.quantity, p_session_id: session.id, p_hold_minutes: HOLD_MINUTES });
+    if (!ok) { failed = it.sku; break; }
+    reserved.push(it.sku);
+  }
+  if (failed) {
+    try { await stripe.checkout.sessions.expire(session.id); } catch (err) { console.error("expire failed:", err); }
+    return Response.json({ error: "out_of_stock", sku: failed }, { status: 409 });
+  }
+  return Response.json({ url: session.url });
+}
+
 // ---------------------------------------------------------------------------
 // One-time setup: GET /api/admin/setup-veeqo?key=ADMIN_SETUP_KEY
 // Links each SKU to the Amazon fulfillment channel in Veeqo. Safe to run
@@ -240,8 +288,15 @@ async function handleCompleted(env, stripe, session) {
     expand: ["line_items"],
   });
 
-  const sku = session.metadata?.sku;
-  const quantity = parseInt(session.metadata?.quantity || "1", 10);
+  // Single "Buy Now" sends sku/quantity; cart sends a JSON array in cart.
+  let orderItems;
+  if (session.metadata?.cart) {
+    try {
+      orderItems = JSON.parse(session.metadata.cart).map((i) => ({ sku: i.sku, quantity: Number(i.quantity) || 1 }));
+    } catch { orderItems = []; }
+  } else {
+    orderItems = [{ sku: session.metadata?.sku, quantity: parseInt(session.metadata?.quantity || "1", 10) }];
+  }
   const shipping = fullSession.shipping_details || fullSession.customer_details;
   const shippingAmountCents = fullSession.shipping_cost?.amount_total ?? 0;
   const shippingSpeed = shippingAmountCents > 0 ? "expedited" : "standard";
@@ -278,7 +333,7 @@ async function handleCompleted(env, stripe, session) {
       ship_state: shipping?.address?.state,
       ship_postal_code: shipping?.address?.postal_code,
       ship_country: shipping?.address?.country,
-      items: [{ sku, quantity }],
+      items: orderItems,
       amount_total: (fullSession.amount_total || 0) / 100,
       currency: fullSession.currency,
       shipping_speed: shippingSpeed,
@@ -690,6 +745,10 @@ export default {
 
       if (url.pathname === "/api/create-checkout-session" && request.method === "POST") {
         return await handleCreateCheckoutSession(request, env);
+      }
+
+      if (url.pathname === "/api/create-cart-checkout" && request.method === "POST") {
+        return await handleCreateCartCheckout(request, env);
       }
 
       if (url.pathname === "/api/stripe-webhook" && request.method === "POST") {
