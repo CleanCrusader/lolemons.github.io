@@ -10,7 +10,9 @@
   "keep_vars": true,
   "vars": {
     "SITE_URL": "https://lolemons.com",
-    "SUPABASE_URL": "https://fkdjfrvyytkiutmwkzap.supabase.co"
+    "SUPABASE_URL": "https://fkdjfrvyytkiutmwkzap.supabase.co",
+    "VEEQO_DELIVERY_METHOD_ID_STANDARD": "2031578",
+    "VEEQO_DELIVERY_METHOD_ID_EXPEDITED": "2031579"
   },
   "assets": {
     "directory": ".",
