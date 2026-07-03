@@ -76,6 +76,7 @@
     </nav>
     <div class="nav-cta">
       <a href="products.html" class="btn btn-primary" style="padding:10px 22px;font-size:0.88rem;">Shop Now</a>
+      <button class="cart-icon-btn" data-cart-open aria-label="Open cart">🛒<span class="cart-count" data-cart-count>0</span></button>
       <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
     </div>
   </div>
@@ -370,6 +371,21 @@
 
 <script src="js/main.js"></script>
 <script src="js/subscribe.js"></script>
+<script src="js/cart.js"></script>
+
+<div class="cart-overlay" id="cartOverlay"></div>
+<aside class="cart-drawer" id="cartDrawer" aria-label="Shopping cart">
+  <div class="cart-head">
+    <h3>Your Cart</h3>
+    <button class="cart-close" id="cartClose" aria-label="Close cart">×</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-footer" id="cartFooter" style="display:none;">
+    <div class="cart-total-row"><strong>Total</strong><span id="cartTotal">$0.00</span></div>
+    <button class="btn btn-primary btn-full" id="cartCheckout">Checkout</button>
+    <p class="cart-note">Shipping selected at checkout. Free standard shipping.</p>
+  </div>
+</aside>
 <script>
   // Nav toggle
   const toggle = document.querySelector('.nav-toggle');
