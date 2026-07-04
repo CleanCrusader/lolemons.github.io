@@ -71,6 +71,7 @@ async function findProductBySku(env, sku) {
           return {
             productId: product.id,
             sellableId: sellable.id,
+            price: sellable.price ?? null,
             availableStock: product.total_available_stock_level ?? null,
           };
         }
@@ -178,6 +179,7 @@ async function createOrderForFulfillment(env, { channelId, deliveryMethodId, cus
         customer_attributes: customer,
         deliver_to_attributes: deliverTo,
         line_items_attributes: lineItems,
+        payment_attributes: { payment_type: "none", reference_number: "stripe" },
       },
     },
   });

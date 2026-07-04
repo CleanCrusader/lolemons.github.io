@@ -248,7 +248,7 @@ async function createVeeqoFulfillmentOrder(env, dtcOrder) {
     if (!product) {
       throw new Error(`SKU ${item.sku} not found in Veeqo — has it been added to the catalog there?`);
     }
-    lineItems.push({ sellable_id: product.sellableId, quantity: item.quantity });
+    lineItems.push({ sellable_id: product.sellableId, quantity: item.quantity, price_per_unit: product.price ?? 0 });
   }
 
   const [firstName, ...rest] = (dtcOrder.customer_name || dtcOrder.customer_email || "Customer").split(" ");
