@@ -395,8 +395,12 @@ async function handleStripeWebhook(request, env) {
     }
   } catch (err) {
     console.error(`Error handling ${event.type}:`, err);
-    // Still 200 — Stripe retries on non-2xx, and retrying a partially
-    // failed order-creation flow risks duplicate orders.
+    if (event.type === "checkout.session.completed") {
+      try {
+        await sbPatch(env, "dtc_orders", { stripe_session_id: `eq.${event.data.object.id}` },
+          { status: "failed", fulfillment_error: `[outer] ${String(err?.message ?? err)}`.slice(0, 500), updated_at: new Date().toISOString() });
+      } catch {}
+    }
   }
 
   return new Response("ok", { status: 200 });
