@@ -363,7 +363,7 @@ async function handleCompleted(env, stripe, session) {
       env,
       "dtc_orders",
       { stripe_session_id: `eq.${session.id}` },
-      { status: "failed", updated_at: new Date().toISOString() }
+      { status: "failed", fulfillment_error: String(err?.message ?? err).slice(0, 500), updated_at: new Date().toISOString() }
     );
   }
 }
