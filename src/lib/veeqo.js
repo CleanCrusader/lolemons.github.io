@@ -94,6 +94,11 @@ async function getAvailableStockBySku(env, sku) {
  * See: https://developers.veeqo.com/guides/buyer-protection
  */
 async function ensureAmazonFulfillmentChannel(env) {
+  // If a channel is pinned, always use it — never create a new one.
+  // Prevents duplicate "Website (Custom Integration)" channels piling up
+  // on every deploy/diagnostic run.
+  if (env.VEEQO_CHANNEL_ID) return env.VEEQO_CHANNEL_ID;
+
   const channels = await veeqoFetch(env, "/channels?type_code=custom_integration");
   const existing = (Array.isArray(channels) ? channels : []).find(
     (c) => c.custom_integration_channel_specific_attributes?.integration_type === "amazon"
