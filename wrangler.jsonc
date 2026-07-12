@@ -12,7 +12,8 @@
     "SITE_URL": "https://lolemons.com",
     "SUPABASE_URL": "https://fkdjfrvyytkiutmwkzap.supabase.co",
     "VEEQO_DELIVERY_METHOD_ID_STANDARD": "2031578",
-    "VEEQO_DELIVERY_METHOD_ID_EXPEDITED": "2031579"
+    "VEEQO_DELIVERY_METHOD_ID_EXPEDITED": "2031579",
+    "VEEQO_CHANNEL_ID": "1140912"
   },
   "assets": {
     "directory": ".",
