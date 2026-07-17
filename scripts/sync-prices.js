@@ -64,32 +64,22 @@ async function veeqoFetch(path) {
   return res.json();
 }
 
-async function findNativeAmazonChannelId() {
-  const channels = await veeqoFetch("/channels");
-  const native = (Array.isArray(channels) ? channels : []).find((c) => c.type_code === "amazon");
-  if (!native) {
-    throw new Error(
-      "No native Amazon channel found in Veeqo (type_code 'amazon'). " +
-        "Is the 'Continue with Amazon' connection still active?"
-    );
-  }
-  return native.id;
-}
-
-async function fetchRemotePrices(channelId) {
+async function fetchRemotePrices() {
   let page = 1;
   const perPage = 100;
   const bySku = new Map();
 
   while (page <= 20) {
-    const batch = await veeqoFetch(`/channels/${channelId}/channel_sellables?page_size=${perPage}&page=${page}`);
-    if (!Array.isArray(batch) || batch.length === 0) break;
+    const products = await veeqoFetch(`/products?page_size=${perPage}&page=${page}`);
+    if (!Array.isArray(products) || products.length === 0) break;
 
-    for (const cs of batch) {
-      const sku = cs.remote_sku || cs.attributes?.remote_sku;
-      const price = cs.remote_price ?? cs.attributes?.remote_price;
-      if (sku && SKUS.includes(sku) && price !== undefined) {
-        bySku.set(sku, Number(price));
+    for (const product of products) {
+      for (const sellable of product.sellables || []) {
+        const sku = sellable.sku_code;
+        const price = sellable.price;
+        if (sku && SKUS.includes(sku) && price != null) {
+          bySku.set(sku, Number(price));
+        }
       }
     }
     page += 1;
@@ -178,8 +168,7 @@ async function commitToGitHub(newProductsHtml, sha) {
 async function main() {
   assertEnv();
 
-  const channelId = await findNativeAmazonChannelId();
-  const remotePrices = await fetchRemotePrices(channelId);
+  const remotePrices = await fetchRemotePrices();
 
   const existingRows = await select("inventory", {}, "sku,price,stripe_product_id,stripe_price_id");
   const existingBySku = new Map(existingRows.map((r) => [r.sku, r]));
