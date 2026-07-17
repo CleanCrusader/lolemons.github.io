@@ -714,6 +714,43 @@ async function handleListPendingReviews(request, env) {
   return Response.json({ reviews });
 }
 
+async function handleUpdatePrice(request, env) {
+  if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
+    return new Response("Forbidden", { status: 403 });
+  }
+  let body;
+  try { body = await request.json(); } catch { return Response.json({ error: "invalid_body" }, { status: 400 }); }
+
+  const sku = String(body.sku || "").trim();
+  const price = Number(body.price);
+  if (!sku || !(price > 0)) {
+    return Response.json({ error: "invalid_request", message: "sku and a positive price are required." }, { status: 400 });
+  }
+
+  const rows = await sbSelect(env, "inventory", { sku: `eq.${sku}` });
+  const inv = rows[0];
+  if (!inv) return Response.json({ error: "unknown_sku", message: `No inventory row for ${sku}.` }, { status: 404 });
+  if (!inv.stripe_product_id) return Response.json({ error: "no_stripe_product", message: `No stripe_product_id for ${sku}.` }, { status: 400 });
+
+  const stripe = getStripe(env);
+  let newPrice;
+  try {
+    newPrice = await stripe.prices.create({
+      product: inv.stripe_product_id,
+      currency: "usd",
+      unit_amount: Math.round(price * 100),
+    });
+    await stripe.products.update(inv.stripe_product_id, { default_price: newPrice.id });
+  } catch (err) {
+    return Response.json({ error: "stripe_failed", message: String(err?.message ?? err) }, { status: 502 });
+  }
+
+  await sbPatch(env, "inventory", { sku: `eq.${sku}` },
+    { price, stripe_price_id: newPrice.id, updated_at: new Date().toISOString() });
+
+  return Response.json({ ok: true, sku, price, stripe_price_id: newPrice.id });
+}
+
 async function handleReviewAction(request, env) {
   if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
     return new Response("Forbidden", { status: 403 });
@@ -793,6 +830,10 @@ export default {
 
       if (url.pathname === "/api/admin/review-action" && request.method === "POST") {
         return await handleReviewAction(request, env);
+      }
+
+      if (url.pathname === "/api/admin/update-price" && request.method === "POST") {
+        return await handleUpdatePrice(request, env);
       }
     } catch (err) {
       console.error(`Error handling ${url.pathname}:`, err);
