@@ -15,7 +15,7 @@ const SUPABASE_ANON_KEY =
 
 async function fetchStock(skus) {
   const url = new URL(`${SUPABASE_URL}/rest/v1/inventory`);
-  url.searchParams.set("select", "sku,available_quantity");
+  url.searchParams.set("select", "sku,available_quantity,price");
   url.searchParams.set("sku", `in.(${skus.join(",")})`);
 
   const res = await fetch(url, {
@@ -25,8 +25,19 @@ async function fetchStock(skus) {
 
   const rows = await res.json();
   const bySku = {};
-  for (const row of rows) bySku[row.sku] = row.available_quantity;
+  for (const row of rows) bySku[row.sku] = { available: row.available_quantity, price: row.price };
   return bySku;
+}
+
+function renderPrice(sku, price) {
+  if (price == null) return;
+  const p = Number(price).toFixed(2);
+  // Update the big visible price and any structured-data-adjacent spans.
+  const card = document.querySelector(`[data-buy-sku="${sku}"]`);
+  if (card) {
+    const main = card.querySelector(".product-price");
+    if (main) main.textContent = `$${p}`;
+  }
 }
 
 function renderStock(card, available) {
@@ -107,7 +118,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const stock = await fetchStock(skus);
-    cards.forEach((card) => renderStock(card, stock[card.dataset.buySku]));
+    cards.forEach((card) => {
+      const sku = card.dataset.buySku;
+      const entry = stock[sku];
+      renderStock(card, entry ? entry.available : undefined);
+      if (entry) renderPrice(sku, entry.price);
+    });
   } catch (err) {
     console.error(err);
     cards.forEach((card) => renderStock(card, undefined));
