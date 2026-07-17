@@ -9,8 +9,7 @@ name: Sync Prices from Amazon
 # SUPABASE_SERVICE_ROLE_KEY
 
 on:
-  schedule:
-    - cron: "0 13 * * *" # once daily, 1pm UTC
+  # schedule disabled — replaced by sync-prices-amazon.yml (SP-API based)
   workflow_dispatch: {}
 
 permissions:
