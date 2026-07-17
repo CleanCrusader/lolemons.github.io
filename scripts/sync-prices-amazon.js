@@ -48,10 +48,14 @@ function getStripe() {
 async function fetchAmazonPrice(asin) {
   const path = `/products/pricing/v0/price?MarketplaceId=${MARKETPLACE_ID}&Asins=${asin}&ItemType=Asin`;
   const res = await spapiFetch(path);
-  // Response shape: { payload: [ { ASIN, Product: { Offers: [...] } } ] }
+  if (!APPLY) {
+    // Dry-run: dump the raw offer structure so we can see exactly which
+    // fields carry regular vs sale price before building strikethrough.
+    const entry = res?.payload?.find((p) => p.ASIN === asin) || res?.payload?.[0];
+    console.log(`RAW ${asin}:`, JSON.stringify(entry?.Product?.Offers ?? entry ?? res).slice(0, 1200));
+  }
   const entry = res?.payload?.find((p) => p.ASIN === asin) || res?.payload?.[0];
   const offers = entry?.Product?.Offers || [];
-  // Prefer the seller's own offer; fall back to first landed price.
   for (const o of offers) {
     const amt = o?.BuyingPrice?.ListingPrice?.Amount;
     if (amt != null) return Number(amt);
