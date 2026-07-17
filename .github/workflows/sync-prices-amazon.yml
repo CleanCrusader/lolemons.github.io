@@ -1,0 +1,48 @@
+name: Sync Prices from Amazon (SP-API)
+
+# Reads live Amazon selling prices via SP-API and (in APPLY mode) updates
+# Stripe, Supabase, and products.html. Defaults to DRY RUN.
+#
+# Required repo secrets: STRIPE_SECRET_KEY (LIVE), SUPABASE_URL,
+# SUPABASE_SERVICE_ROLE_KEY, plus the SPAPI_* secrets already used by
+# sync-orders. To actually apply changes, run manually with apply=true.
+
+on:
+  schedule:
+    - cron: "0 15 * * *"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Apply changes (true) or dry-run (false)"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+
+jobs:
+  sync-prices:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install dependencies
+        run: npm install
+      - name: Sync prices from Amazon
+        env:
+          LWA_CLIENT_ID: ${{ secrets.LWA_CLIENT_ID }}
+          LWA_CLIENT_SECRET: ${{ secrets.LWA_CLIENT_SECRET }}
+          LWA_REFRESH_TOKEN: ${{ secrets.LWA_REFRESH_TOKEN }}
+          SPAPI_MARKETPLACE_ID: ${{ vars.SPAPI_MARKETPLACE_ID }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          APPLY: ${{ github.event.inputs.apply || 'false' }}
+        run: node scripts/sync-prices-amazon.js
