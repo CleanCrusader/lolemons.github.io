@@ -112,7 +112,7 @@ async function commitProductsHtml(html, sha, branch, repo) {
 async function main() {
   console.log(APPLY ? "=== APPLY MODE: will make real changes ===" : "=== DRY RUN: logging only, no changes ===");
 
-  const existing = await select("inventory", "sku,price,stripe_product_id,stripe_price_id");
+  const existing = await select("inventory", {}, "sku,price,stripe_product_id,stripe_price_id");
   const existingBySku = new Map(existing.map((r) => [r.sku, r]));
   const changes = new Map();
 
