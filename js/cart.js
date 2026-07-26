@@ -2,7 +2,7 @@
 (function () {
   const KEY = "lol_cart";
   const CATALOG = {
-    "FV-LNLR-DPRX": { name: "Clean Crusader — 24oz", price: 9.99, img: "images/Clean_Crusader_24oz.png" },
+    "FV-LNLR-DPRX": { name: "Clean Crusader — 24oz", price: 14.99, img: "images/Clean_Crusader_24oz.png" },
     "IT-3U6C-E8HZ": { name: "Concentrate — 16oz", price: 23.99, img: "images/Clean_Crusader_Concentrate.png" },
     "LOL1A": { name: "Pet Odor & Stain Eliminator", price: 19.99, img: "images/lol1a.jpg" },
   };
@@ -10,6 +10,7 @@
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };
   const write = (c) => localStorage.setItem(KEY, JSON.stringify(c));
   const count = (c) => Object.values(c).reduce((n, q) => n + q, 0);
+  const priceOf = (sku) => (window.LOL_PRICES && window.LOL_PRICES[sku] != null) ? window.LOL_PRICES[sku] : CATALOG[sku].price;
 
   function add(sku, qty) {
     const c = read();
@@ -43,12 +44,12 @@
     let total = 0;
     body.innerHTML = skus.map((sku) => {
       const p = CATALOG[sku]; if (!p) return "";
-      const line = p.price * c[sku]; total += line;
+      const line = priceOf(sku) * c[sku]; total += line;
       return `<div class="cart-item">
         <img src="${p.img}" alt="${p.name}">
         <div class="cart-item-info">
           <div class="cart-item-name">${p.name}</div>
-          <div class="cart-item-price">$${p.price.toFixed(2)}</div>
+          <div class="cart-item-price">$${priceOf(sku).toFixed(2)}</div>
           <div class="cart-qty">
             <button data-dec="${sku}" aria-label="Decrease">−</button>
             <span>${c[sku]}</span>

@@ -29,17 +29,6 @@ async function fetchStock(skus) {
   return bySku;
 }
 
-function renderPrice(sku, price) {
-  if (price == null) return;
-  const p = Number(price).toFixed(2);
-  // Update the big visible price and any structured-data-adjacent spans.
-  const card = document.querySelector(`[data-buy-sku="${sku}"]`);
-  if (card) {
-    const main = card.querySelector(".product-price");
-    if (main) main.textContent = `$${p}`;
-  }
-}
-
 function renderStock(card, available) {
   const badge = card.querySelector("[data-stock-badge]");
   const buyBtn = card.querySelector("[data-buy-button]");
@@ -122,7 +111,6 @@ document.addEventListener("DOMContentLoaded", async () => {
       const sku = card.dataset.buySku;
       const entry = stock[sku];
       renderStock(card, entry ? entry.available : undefined);
-      if (entry) renderPrice(sku, entry.price);
     });
   } catch (err) {
     console.error(err);
