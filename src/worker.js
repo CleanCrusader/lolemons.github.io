@@ -283,7 +283,54 @@ async function createVeeqoFulfillmentOrder(env, dtcOrder) {
   });
 }
 
-async function handleCompleted(env, stripe, session) {
+async function sendOrderConfirmation(env, order, shipping) {
+  const fromAddress = env.ORDERS_FROM_EMAIL || env.REVIEWS_FROM_EMAIL || "orders@lolemons.com";
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const money = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+  const NAMES = {
+    "FV-LNLR-DPRX": "Clean Crusader — 24oz",
+    "IT-3U6C-E8HZ": "Concentrate — 16oz",
+    "LOL1A": "Pet Odor & Stain Eliminator",
+  };
+  const itemRows = (order.items || [])
+    .map((i) => `<tr><td style="padding:4px 0;">${esc(NAMES[i.sku] || i.sku)} × ${i.quantity}</td></tr>`)
+    .join("");
+
+  const addr = shipping?.address || {};
+  const shipBlock = [
+    esc(shipping?.name),
+    esc(addr.line1),
+    addr.line2 ? esc(addr.line2) : "",
+    `${esc(addr.city)}, ${esc(addr.state)} ${esc(addr.postal_code)}`,
+  ].filter(Boolean).join("<br>");
+
+  try {
+    await sendEmail(env, {
+      to: order.customer_email,
+      from: fromAddress,
+      replyTo: "contact@lolemons.com",
+      subject: "Your Lots of Lemon order is confirmed",
+      html: `
+        <div style="font-family:sans-serif;max-width:520px;">
+          <h2 style="color:#1a2e10;">Thanks for your order!</h2>
+          <p>We've received your order and we're getting it ready. You'll get a second email with tracking once it ships.</p>
+          <table style="width:100%;border-collapse:collapse;margin:16px 0;">${itemRows}</table>
+          <p><strong>Total:</strong> ${money(order.amount_total)}<br>
+             <strong>Shipping:</strong> ${order.shipping_speed === "expedited" ? "Expedited" : "Standard"}</p>
+          <p style="margin-top:16px;"><strong>Shipping to:</strong><br>${shipBlock}</p>
+          <p style="color:#666;font-size:13px;margin-top:20px;">
+            If anything here looks wrong — especially the shipping address — reply to this email right away and we'll fix it before it ships.
+          </p>
+          <p style="color:#666;font-size:13px;">— Lots of Lemon</p>
+        </div>`,
+    });
+  } catch (err) {
+    console.error("Order confirmation email failed:", err?.message ?? err);
+  }
+}
+
+async function handleCompleted(env, stripe, session, ctx) {
   const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
     expand: ["line_items"],
   });
@@ -297,7 +344,18 @@ async function handleCompleted(env, stripe, session) {
   } else {
     orderItems = [{ sku: session.metadata?.sku, quantity: parseInt(session.metadata?.quantity || "1", 10) }];
   }
-  const shipping = fullSession.shipping_details || fullSession.customer_details;
+  // Stripe moved shipping to collected_information.shipping_details as of
+  // API 2025-03-31. The old top-level shipping_details is gone on our
+  // version (2026-05-27.dahlia), so reading it returned nothing and we
+  // were silently falling back to BILLING details — shipping orders to the
+  // wrong address. Read the correct field, and do NOT fall back to billing:
+  // shipping to a billing address is worse than failing loudly.
+  const shipping =
+    fullSession.collected_information?.shipping_details ||
+    fullSession.shipping_details || // legacy, in case of older sessions
+    null;
+
+  const shippingMissing = !shipping?.address?.line1;
   const shippingAmountCents = fullSession.shipping_cost?.amount_total ?? 0;
   const shippingSpeed = shippingAmountCents > 0 ? "expedited" : "standard";
 
@@ -322,6 +380,25 @@ async function handleCompleted(env, stripe, session) {
     console.log(`Webhook replay for ${session.id}: retrying Veeqo after previous failure.`);
   } else {
     // First time seeing this session.
+    if (shippingMissing) {
+      // No shipping address collected — do not fulfill. Record so it's
+      // visible and can be handled manually rather than shipped to billing.
+      await sbInsert(env, "dtc_orders", {
+        stripe_session_id: session.id,
+        stripe_payment_intent: session.payment_intent,
+        customer_email: fullSession.customer_details?.email,
+        items: orderItems,
+        amount_total: (fullSession.amount_total || 0) / 100,
+        currency: fullSession.currency,
+        shipping_speed: shippingSpeed,
+        shipping_amount: shippingAmountCents / 100,
+        status: "failed",
+        fulfillment_error: "No shipping address on Stripe session (collected_information.shipping_details empty).",
+      });
+      await sbRpc(env, "consume_inventory_hold", { p_session_id: session.id });
+      console.error(`Order ${session.id}: no shipping address — recorded as failed, not fulfilled.`);
+      return;
+    }
     const dtcOrderResult = await sbInsert(env, "dtc_orders", {
       stripe_session_id: session.id,
       stripe_payment_intent: session.payment_intent,
@@ -357,6 +434,13 @@ async function handleCompleted(env, stripe, session) {
         updated_at: new Date().toISOString(),
       }
     );
+    // Send the customer their confirmation email (non-blocking). Only on
+    // successful fulfillment so the email reflects a real, shipping order.
+    if (ctx?.waitUntil) {
+      ctx.waitUntil(sendOrderConfirmation(env, order, shipping));
+    } else {
+      await sendOrderConfirmation(env, order, shipping);
+    }
   } catch (err) {
     console.error("Veeqo fulfillment order failed:", err?.message ?? err);
     await sbPatch(
@@ -368,7 +452,7 @@ async function handleCompleted(env, stripe, session) {
   }
 }
 
-async function handleStripeWebhook(request, env) {
+async function handleStripeWebhook(request, env, ctx) {
   const signature = request.headers.get("stripe-signature");
   const payload = await request.text();
   const stripe = getStripe(env);
@@ -389,7 +473,7 @@ async function handleStripeWebhook(request, env) {
 
   try {
     if (event.type === "checkout.session.completed") {
-      await handleCompleted(env, stripe, event.data.object);
+      await handleCompleted(env, stripe, event.data.object, ctx);
     } else if (event.type === "checkout.session.expired") {
       await sbRpc(env, "release_inventory_hold", { p_session_id: event.data.object.id });
     }
@@ -793,7 +877,7 @@ export default {
       }
 
       if (url.pathname === "/api/stripe-webhook" && request.method === "POST") {
-        return await handleStripeWebhook(request, env);
+        return await handleStripeWebhook(request, env, ctx);
       }
 
       if (url.pathname === "/api/submit-review" && request.method === "POST") {
