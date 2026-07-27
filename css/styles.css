@@ -919,10 +919,10 @@ nav { flex: 1; }
   .footer-grid { grid-template-columns: 1fr 1fr; }
 
   /* Nav */
-  .nav-links { display: none; }
+  .nav-links { display: none !important; }
   .nav-toggle { display: flex; }
   .nav-links.open {
-    display: flex;
+    display: flex !important;
     flex-direction: column;
     position: absolute;
     top: 68px;
