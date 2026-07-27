@@ -935,7 +935,7 @@ nav { flex: 1; }
     padding: 16px 24px;
     gap: 12px;
     box-shadow: var(--shadow-md);
-    z-index: 99;
+    z-index: 101;
   }
 
   /* Uses + compare */
