@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sour Sprint — the crying lemon runner</title>
+<style>
+  :root{
+    --day-sky:#fdf6d8;
+    --day-ground:#8a7a2e;
+    --day-ink:#4a3f10;
+    --night-sky:#171a2e;
+    --night-ground:#3a3c66;
+    --night-ink:#c9cdf0;
+    --accent:#e9b949;
+    --frame:#2a2410;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:"Courier New",ui-monospace,monospace;
+    background:
+      radial-gradient(120% 120% at 50% -20%, #fff8e0 0%, #f6e9b0 45%, #e7d488 100%);
+    color:var(--frame);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:100%;padding:24px 16px;gap:14px;
+  }
+  .title{
+    text-align:center;line-height:1.05;
+  }
+  .title h1{
+    font-size:clamp(22px,5vw,34px);
+    letter-spacing:2px;text-transform:uppercase;
+    color:var(--frame);
+  }
+  .title p{
+    font-size:13px;letter-spacing:1px;opacity:.7;margin-top:4px;
+  }
+  .stage{
+    position:relative;width:min(920px,100%);
+    border:4px solid var(--frame);border-radius:14px;overflow:hidden;
+    box-shadow:0 18px 40px -18px rgba(42,36,16,.6), inset 0 0 0 2px #fff7d6;
+    background:var(--day-sky);
+  }
+  canvas{display:block;width:100%;height:auto;image-rendering:auto;touch-action:manipulation}
+  .overlay{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:10px;
+    background:rgba(253,246,216,.82);backdrop-filter:blur(2px);
+    text-align:center;padding:20px;transition:opacity .18s ease;
+  }
+  .overlay.hidden{opacity:0;pointer-events:none}
+  .overlay h2{font-size:clamp(20px,4.5vw,30px);letter-spacing:1px;color:var(--frame)}
+  .overlay p{font-size:14px;max-width:34ch;line-height:1.5;opacity:.85}
+  .btn{
+    margin-top:6px;font-family:inherit;font-size:15px;font-weight:bold;
+    letter-spacing:1px;text-transform:uppercase;cursor:pointer;
+    background:var(--frame);color:#fdf6d8;border:none;
+    padding:11px 22px;border-radius:999px;
+    box-shadow:0 6px 0 -1px #000a;transition:transform .08s ease;
+  }
+  .btn:active{transform:translateY(3px);box-shadow:0 3px 0 -1px #000a}
+  .legend{
+    display:flex;gap:18px;flex-wrap:wrap;justify-content:center;
+    font-size:12.5px;letter-spacing:.5px;opacity:.8;
+  }
+  .legend b{background:var(--frame);color:#fdf6d8;border-radius:5px;padding:1px 7px;font-size:11px}
+  @media (prefers-reduced-motion: reduce){ .btn{transition:none} }
+</style>
+</head>
+<body>
+  <div class="title">
+    <h1>Sour Sprint 🍋</h1>
+    <p>A very upset lemon vaults an endless gauntlet of knives.</p>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="game" width="920" height="300" aria-label="Lemon runner game"></canvas>
+    <div class="overlay" id="overlay">
+      <h2 id="ovTitle">Ready when you are</h2>
+      <p id="ovText">The lemon does not want to be here. Help it survive anyway.</p>
+      <button class="btn" id="startBtn">Start running</button>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><b>SPACE</b> / <b>↑</b> / tap — jump</span>
+    <span><b>↓</b> — duck the flying knives</span>
+    <span><b>P</b> — pause</span>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovText  = document.getElementById('ovText');
+  const startBtn= document.getElementById('startBtn');
+
+  const W = canvas.width, H = canvas.height;
+  const GROUND_Y = 250;
+
+  // ---- physics (units: px, seconds) ----
+  const GRAVITY   = 2400;
+  const JUMP_VEL  = -820;
+  const BASE_SPEED= 340;
+  const MAX_SPEED = 780;
+  const SPEED_RAMP= 10;      // speed added per second survived
+
+  const lemon = {
+    x: 96, y: GROUND_Y, vy: 0, w: 50, h: 56,
+    onGround: true, ducking: false, legPhase: 0, tearT: 0, blink: 0
+  };
+
+  let state = 'ready';        // ready | playing | paused | dead
+  let speed = BASE_SPEED;
+  let distance = 0;
+  let score = 0;
+  let high = 0;
+  let obstacles = [];
+  let tears = [];
+  let tearSpawn = 0;
+  let clouds = [];
+  let spawnTimer = 0;
+  let nextGap = 1.1;
+  let night = false;
+  let flipT = 0;              // 0..1 day/night crossfade
+  let lastMilestone = 0;
+  let hurtFlash = 0;
+
+  // ---------- helpers ----------
+  const rnd = (a,b) => a + Math.random()*(b-a);
+  const lerp = (a,b,t) => a+(b-a)*t;
+
+  function reset(){
+    state = 'playing';
+    speed = BASE_SPEED;
+    distance = 0; score = 0;
+    obstacles = []; tears = []; tearSpawn = 0;
+    lemon.y = GROUND_Y; lemon.vy = 0; lemon.onGround = true; lemon.ducking = false;
+    spawnTimer = 0; nextGap = 1.0;
+    night = false; flipT = 0; lastMilestone = 0; hurtFlash = 0;
+    clouds = [];
+    for(let i=0;i<4;i++) clouds.push({x:rnd(0,W), y:rnd(30,120), s:rnd(0.15,0.4), r:rnd(16,26)});
+    overlay.classList.add('hidden');
+  }
+
+  function jump(){
+    if(state==='ready' || state==='dead'){ reset(); return; }
+    if(state!=='playing') return;
+    if(lemon.onGround){ lemon.vy = JUMP_VEL; lemon.onGround = false; }
+  }
+  function setDuck(on){
+    if(state!=='playing') return;
+    lemon.ducking = on && lemon.onGround ? true : (on ? true : false);
+    lemon.ducking = on;
+  }
+
+  // ---------- input ----------
+  window.addEventListener('keydown', e=>{
+    if(['Space','ArrowUp','ArrowDown','KeyP'].includes(e.code)) e.preventDefault();
+    if(e.code==='Space' || e.code==='ArrowUp') jump();
+    else if(e.code==='ArrowDown') setDuck(true);
+    else if(e.code==='KeyP'){
+      if(state==='playing'){ state='paused'; showOverlay('Paused','Catch your breath. Press P to resume.'); }
+      else if(state==='paused'){ overlay.classList.add('hidden'); state='playing'; }
+    }
+  });
+  window.addEventListener('keyup', e=>{ if(e.code==='ArrowDown') setDuck(false); });
+  canvas.addEventListener('pointerdown', e=>{ e.preventDefault(); jump(); });
+  startBtn.addEventListener('click', reset);
+
+  function showOverlay(t, tx){ ovTitle.textContent=t; ovText.textContent=tx; overlay.classList.remove('hidden'); }
+
+  // ---------- spawning ----------
+  function spawnObstacle(){
+    const flyOK = score > 260;
+    const flying = flyOK && Math.random() < 0.28;
+    if(flying){
+      obstacles.push({type:'fly', x:W+40, y:GROUND_Y-96, w:56, h:22, bob:rnd(0,6.28)});
+    } else {
+      const cluster = Math.random() < 0.22 && score>120 ? 2 : 1;
+      for(let i=0;i<cluster;i++){
+        const h = rnd(38,52);
+        obstacles.push({type:'ground', x:W+40+i*26, y:GROUND_Y-h, w:20, h:h});
+      }
+    }
+    // gap shrinks as we speed up
+    const speedFrac = (speed-BASE_SPEED)/(MAX_SPEED-BASE_SPEED);
+    nextGap = rnd(0.95,1.7) - speedFrac*0.55;
+  }
+
+  // ---------- update ----------
+  function update(dt){
+    // speed & score
+    speed = Math.min(MAX_SPEED, speed + SPEED_RAMP*dt);
+    distance += speed*dt;
+    score = Math.floor(distance/12);
+
+    // day/night flip every 700 pts
+    if(score - lastMilestone >= 700){ lastMilestone = score; night = !night; }
+    flipT = lerp(flipT, night?1:0, Math.min(1, dt*3));
+
+    // lemon vertical
+    lemon.vy += GRAVITY*dt;
+    lemon.y += lemon.vy*dt;
+    if(lemon.y >= GROUND_Y){ lemon.y = GROUND_Y; lemon.vy = 0; lemon.onGround = true; }
+    lemon.legPhase += dt * (lemon.onGround ? speed*0.045 : 4);
+    lemon.tearT += dt;
+    lemon.blink = (lemon.blink + dt) % 3.2;
+
+    // gush of tears flung out BEHIND the lemon as it runs
+    const _duck = lemon.ducking && lemon.onGround;
+    const _bodyH = _duck ? lemon.h-22 : lemon.h;
+    const _eyeY = (lemon.y - _bodyH/2) - 1;
+    tearSpawn += dt;
+    while(tearSpawn > 0.016){
+      tearSpawn -= 0.016;
+      const ex = lemon.x + (Math.random()<0.5 ? -11 : 11);
+      tears.push({
+        x: ex, y: _eyeY+3,
+        vx: -(rnd(170,340)) - speed*0.25,   // hurl backward, faster than the world scroll
+        vy: rnd(-190,50),                    // arc up then rain down -> fountain
+        life: rnd(0.55,1.0), age:0, r: rnd(2.2,4.0)
+      });
+    }
+    for(const t of tears){ t.age+=dt; t.vy += 980*dt; t.x += t.vx*dt; t.y += t.vy*dt; }
+    tears = tears.filter(t => t.age < t.life && t.x > -30 && t.y < GROUND_Y+16);
+
+    // clouds
+    for(const c of clouds){
+      c.x -= speed*c.s*dt;
+      if(c.x < -40){ c.x = W+rnd(20,120); c.y = rnd(28,120); c.r=rnd(16,26); c.s=rnd(0.15,0.4);}
+    }
+
+    // spawn
+    spawnTimer += dt;
+    if(spawnTimer >= nextGap){ spawnTimer = 0; spawnObstacle(); }
+
+    // move obstacles + collide
+    const hb = lemonHitbox();
+    for(const o of obstacles){
+      o.x -= speed*dt;
+      if(o.type==='fly') o.bob += dt*6;
+      if(intersect(hb, obstacleHitbox(o))){ die(); }
+    }
+    obstacles = obstacles.filter(o => o.x + o.w > -10);
+
+    if(hurtFlash>0) hurtFlash -= dt;
+  }
+
+  function lemonHitbox(){
+    const duckShrink = lemon.ducking ? 22 : 0;
+    const w = lemon.w - 12;
+    const h = (lemon.h - duckShrink) - 10;
+    const x = lemon.x - w/2;
+    const y = (lemon.y - (lemon.h - duckShrink)) + 6;
+    return {x, y, w, h};
+  }
+  function obstacleHitbox(o){
+    const pad = o.type==='fly' ? 5 : 4;
+    let y = o.type==='fly' ? o.y + Math.sin(o.bob)*4 : o.y;
+    return {x:o.x+pad, y:y+pad, w:o.w-pad*2, h:o.h-pad*2};
+  }
+  function intersect(a,b){
+    return a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+  }
+
+  function die(){
+    if(state!=='playing') return;
+    state='dead';
+    hurtFlash = 0.35;
+    high = Math.max(high, score);
+    showOverlay('The lemon is done 🔪',
+      `You lasted ${score} m.  Best: ${high} m.  Press Space or tap to try again.`);
+  }
+
+  // ---------- drawing ----------
+  function drawBackground(){
+    const sky = mixHex('#fdf6d8','#171a2e',flipT);
+    ctx.fillStyle = sky; ctx.fillRect(0,0,W,H);
+
+    // sun / moon
+    const cx = W-90, cy = 62;
+    if(flipT < 0.5){
+      ctx.globalAlpha = 1-flipT*2;
+      ctx.fillStyle = '#f6c945';
+      ctx.beginPath(); ctx.arc(cx,cy,20,0,6.29); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.globalAlpha = (flipT-0.5)*2;
+      ctx.fillStyle = '#e8ecff';
+      ctx.beginPath(); ctx.arc(cx,cy,17,0,6.29); ctx.fill();
+      ctx.fillStyle = sky;
+      ctx.beginPath(); ctx.arc(cx+7,cy-5,15,0,6.29); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    // clouds
+    ctx.fillStyle = mixHex('#ffffff','#2e3358',flipT);
+    ctx.globalAlpha = .8;
+    for(const c of clouds){
+      ctx.beginPath();
+      ctx.arc(c.x,c.y,c.r,0,6.29);
+      ctx.arc(c.x+c.r*0.9,c.y+4,c.r*0.75,0,6.29);
+      ctx.arc(c.x-c.r*0.9,c.y+5,c.r*0.7,0,6.29);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawGround(){
+    const g = mixHex('#8a7a2e','#3a3c66',flipT);
+    ctx.strokeStyle = g; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(0,GROUND_Y+2); ctx.lineTo(W,GROUND_Y+2); ctx.stroke();
+    // little pebbles scrolling
+    ctx.fillStyle = g;
+    const off = (distance*0.5) % 60;
+    for(let x=-off; x<W; x+=60){
+      ctx.fillRect(x, GROUND_Y+10, 6, 2);
+      ctx.fillRect(x+28, GROUND_Y+16, 3, 2);
+    }
+  }
+
+  function drawLemon(){
+    const ink = mixHex('#4a3f10','#c9cdf0',flipT);
+    const duck = lemon.ducking && lemon.onGround;
+    const bodyH = duck ? lemon.h-22 : lemon.h;
+    const bodyW = duck ? lemon.w+10 : lemon.w;
+    const cx = lemon.x;
+    const cy = lemon.y - bodyH/2;
+
+    ctx.save();
+
+    // legs (animated)
+    const swing = Math.sin(lemon.legPhase)*6;
+    ctx.strokeStyle = ink; ctx.lineWidth = 4; ctx.lineCap='round';
+    const legY = lemon.y;
+    ctx.beginPath();
+    ctx.moveTo(cx-10, legY-6); ctx.lineTo(cx-10+swing, legY+ (lemon.onGround?0:-4));
+    ctx.moveTo(cx+10, legY-6); ctx.lineTo(cx+10-swing, legY+ (lemon.onGround?0:-4));
+    ctx.stroke();
+    // feet
+    ctx.beginPath();
+    ctx.moveTo(cx-10+swing, legY); ctx.lineTo(cx-4+swing, legY);
+    ctx.moveTo(cx+10-swing, legY); ctx.lineTo(cx+16-swing, legY);
+    ctx.stroke();
+
+    // body (lemon)
+    const grd = ctx.createRadialGradient(cx-10, cy-8, 6, cx, cy, bodyW*0.7);
+    grd.addColorStop(0, '#fff2a8');
+    grd.addColorStop(0.6, '#f6d13e');
+    grd.addColorStop(1, '#e0ad1f');
+    ctx.fillStyle = grd;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, bodyW/2, bodyH/2, 0, 0, 6.29);
+    ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = '#c8961a'; ctx.stroke();
+
+    // nub + leaf on top
+    ctx.fillStyle = '#e0ad1f';
+    ctx.beginPath(); ctx.ellipse(cx+bodyW/2-3, cy-2, 5, 4, 0.5, 0, 6.29); ctx.fill();
+    ctx.fillStyle = '#77b23a';
+    ctx.beginPath(); ctx.ellipse(cx-2, cy-bodyH/2-3, 7, 4, -0.5, 0, 6.29); ctx.fill();
+
+    // ---- dramatic wailing face ----
+    const eyeY = cy - 1;
+    const eL = cx-10, eR = cx+10;
+
+    // anguished eyebrows, steep and pinched together
+    ctx.strokeStyle = '#5a4a10'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(eL-8, eyeY-12); ctx.lineTo(eL+6, eyeY-3);
+    ctx.moveTo(eR+8, eyeY-12); ctx.lineTo(eR-6, eyeY-3);
+    ctx.stroke();
+
+    // big glossy welling eyes
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.ellipse(eL, eyeY, 7.5, 9, 0, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(eR, eyeY, 7.5, 9, 0, 0, 6.29); ctx.fill();
+    // watery blue pooling along the lower lids
+    ctx.fillStyle = '#8fd0f5';
+    ctx.beginPath(); ctx.ellipse(eL, eyeY+4, 6.5, 4.5, 0, 0, Math.PI); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(eR, eyeY+4, 6.5, 4.5, 0, 0, Math.PI); ctx.fill();
+    // quivering pupils, staring down at their fate
+    const q = Math.sin(lemon.tearT*22) * 0.9;
+    ctx.fillStyle = '#2a2206';
+    ctx.beginPath(); ctx.arc(eL+q, eyeY+3, 3.6, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR+q, eyeY+3, 3.6, 0, 6.29); ctx.fill();
+    // shine highlights
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(eL-2.5, eyeY-3, 2, 0, 6.29); ctx.fill();
+    ctx.beginPath(); ctx.arc(eR-2.5, eyeY-3, 2, 0, 6.29); ctx.fill();
+
+    // wide-open wailing mouth, quivering
+    const mq = 1 + Math.sin(lemon.tearT*20) * 0.16;
+    ctx.fillStyle = '#7a2b2b';
+    ctx.beginPath(); ctx.ellipse(cx, cy+16, 7.5*mq, 6.5*mq, 0, 0, 6.29); ctx.fill();
+    // little tongue
+    ctx.fillStyle = '#cf6069';
+    ctx.beginPath(); ctx.ellipse(cx, cy+18.5*mq, 3.6*mq, 2.4*mq, 0, 0, Math.PI); ctx.fill();
+    // upper lip
+    ctx.strokeStyle = '#5a4a10'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(cx, cy+16, 7.5*mq, Math.PI, 2*Math.PI); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawTear(ctx,x,y,r){
+    ctx.beginPath();
+    ctx.moveTo(x, y-r*1.6);
+    ctx.quadraticCurveTo(x+r, y, x, y+r);
+    ctx.quadraticCurveTo(x-r, y, x, y-r*1.6);
+    ctx.fill();
+  }
+
+  function drawTears(){
+    ctx.lineCap = 'round';
+    for(const t of tears){
+      const a = Math.max(0, 1 - t.age/t.life);
+      // motion streak trailing the droplet along its velocity
+      ctx.globalAlpha = a*0.5;
+      ctx.strokeStyle = '#7ec6f5';
+      ctx.lineWidth = t.r*0.9;
+      ctx.beginPath();
+      ctx.moveTo(t.x - t.vx*0.03, t.y - t.vy*0.03);
+      ctx.lineTo(t.x, t.y);
+      ctx.stroke();
+      // droplet head
+      ctx.globalAlpha = a*0.95;
+      ctx.fillStyle = '#57b4ef';
+      ctx.beginPath(); ctx.arc(t.x, t.y, t.r, 0, 6.29); ctx.fill();
+      ctx.fillStyle = '#aadcf8';
+      ctx.beginPath(); ctx.arc(t.x - t.r*0.3, t.y - t.r*0.3, t.r*0.4, 0, 6.29); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawKnife(o){
+    const bob = o.type==='fly' ? Math.sin(o.bob)*4 : 0;
+    ctx.save();
+    if(o.type==='ground'){
+      const bx = o.x+o.w/2, topY = o.y, botY = o.y+o.h;
+      // blade (point up)
+      ctx.fillStyle = '#d7dbe0';
+      ctx.beginPath();
+      ctx.moveTo(bx, topY);
+      ctx.lineTo(bx+6, botY-14);
+      ctx.lineTo(bx-6, botY-14);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#9aa0a8'; ctx.lineWidth=1.2; ctx.stroke();
+      // edge shine
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(bx-2,topY+4); ctx.lineTo(bx-3,botY-16); ctx.stroke();
+      // guard
+      ctx.fillStyle='#8a8f96';
+      ctx.fillRect(bx-9, botY-15, 18, 3);
+      // handle
+      ctx.fillStyle='#6b4a2a';
+      ctx.fillRect(bx-4, botY-12, 8, 12);
+      ctx.fillStyle='#4a3018';
+      ctx.fillRect(bx-4, botY-8, 8, 2);
+      ctx.fillRect(bx-4, botY-4, 8, 2);
+    } else {
+      // flying knife, blade pointing left toward lemon
+      const y = o.y + bob, x = o.x;
+      ctx.fillStyle='#d7dbe0';
+      ctx.beginPath();
+      ctx.moveTo(x, y+o.h/2);
+      ctx.lineTo(x+34, y+2);
+      ctx.lineTo(x+34, y+o.h-2);
+      ctx.closePath(); ctx.fill();
+      ctx.strokeStyle='#9aa0a8'; ctx.lineWidth=1.2; ctx.stroke();
+      ctx.strokeStyle='#fff'; ctx.lineWidth=1.4;
+      ctx.beginPath(); ctx.moveTo(x+4,y+o.h/2); ctx.lineTo(x+32,y+4); ctx.stroke();
+      // guard + handle
+      ctx.fillStyle='#8a8f96'; ctx.fillRect(x+34, y-1, 3, o.h+2);
+      ctx.fillStyle='#6b4a2a'; ctx.fillRect(x+37, y+4, 18, o.h-8);
+      // motion lines
+      ctx.strokeStyle='rgba(120,120,140,.5)'; ctx.lineWidth=1.5;
+      ctx.beginPath();
+      ctx.moveTo(x-10,y+5); ctx.lineTo(x-2,y+5);
+      ctx.moveTo(x-14,y+o.h/2); ctx.lineTo(x-4,y+o.h/2);
+      ctx.moveTo(x-10,y+o.h-5); ctx.lineTo(x-2,y+o.h-5);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawHUD(){
+    const ink = mixHex('#4a3f10','#c9cdf0',flipT);
+    ctx.fillStyle = ink;
+    ctx.font = 'bold 20px "Courier New", monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText(String(score).padStart(5,'0'), W-16, 32);
+    if(high>0){
+      ctx.font = 'bold 14px "Courier New", monospace';
+      ctx.globalAlpha=.6;
+      ctx.fillText('HI '+String(high).padStart(5,'0'), W-96, 32);
+      ctx.globalAlpha=1;
+    }
+    ctx.textAlign = 'left';
+  }
+
+  // mix two hex colors by t (0..1)
+  function mixHex(a,b,t){
+    const pa=[parseInt(a.slice(1,3),16),parseInt(a.slice(3,5),16),parseInt(a.slice(5,7),16)];
+    const pb=[parseInt(b.slice(1,3),16),parseInt(b.slice(3,5),16),parseInt(b.slice(5,7),16)];
+    const c=pa.map((v,i)=>Math.round(lerp(v,pb[i],t)));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+
+  function render(){
+    drawBackground();
+    drawGround();
+    for(const o of obstacles) drawKnife(o);
+    drawTears();
+    drawLemon();
+    drawHUD();
+    if(hurtFlash>0){
+      ctx.fillStyle = `rgba(200,40,40,${hurtFlash*0.5})`;
+      ctx.fillRect(0,0,W,H);
+    }
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function loop(now){
+    let dt = (now-last)/1000; last = now;
+    if(dt>0.05) dt = 0.05;        // clamp big frame gaps
+    if(state==='playing') update(dt);
+    render();
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // draw a first frame behind the overlay
+  render();
+})();
+</script>
+<script>
+  // Report our full content height to the parent page so the embedding
+  // iframe can size itself exactly — robust across Chrome/Safari mobile.
+  (function () {
+    function reportHeight() {
+      var h = document.body.scrollHeight;
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ sourSprintHeight: h }, "*");
+      }
+    }
+    window.addEventListener("load", reportHeight);
+    window.addEventListener("resize", reportHeight);
+    setTimeout(reportHeight, 300);
+    setTimeout(reportHeight, 1000);
+  })();
+</script>
+</body>
+</html>
