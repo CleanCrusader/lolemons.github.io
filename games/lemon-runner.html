@@ -60,6 +60,15 @@
     box-shadow:0 6px 0 -1px #000a;transition:transform .08s ease;
   }
   .btn:active{transform:translateY(3px);box-shadow:0 3px 0 -1px #000a}
+  .tap-zone{
+    display:block;width:min(920px,100%);margin:8px auto 0;
+    font-family:inherit;font-size:16px;font-weight:bold;letter-spacing:2px;
+    text-transform:uppercase;cursor:pointer;color:var(--frame);
+    background:rgba(247,196,0,.25);border:2px dashed rgba(58,58,42,.4);
+    padding:16px;border-radius:16px;touch-action:manipulation;
+    user-select:none;-webkit-user-select:none;
+  }
+  .tap-zone:active{background:rgba(247,196,0,.5)}
   .legend{
     display:flex;gap:18px;flex-wrap:wrap;justify-content:center;
     font-size:12.5px;letter-spacing:.5px;opacity:.8;
@@ -82,6 +91,8 @@
       <button class="btn" id="startBtn">Start running</button>
     </div>
   </div>
+
+  <button class="tap-zone" id="tapZone" aria-label="Tap to jump">TAP TO JUMP</button>
 
   <div class="legend">
     <span><b>SPACE</b> / <b>↑</b> / tap — jump</span>
@@ -170,6 +181,18 @@
   window.addEventListener('keyup', e=>{ if(e.code==='ArrowDown') setDuck(false); });
   canvas.addEventListener('pointerdown', e=>{ e.preventDefault(); jump(); });
   startBtn.addEventListener('click', reset);
+
+  // Dedicated tap zone below the canvas for mobile — so a player's finger
+  // doesn't have to cover the game area to jump.
+  const tapZone = document.getElementById('tapZone');
+  if(tapZone){
+    tapZone.addEventListener('pointerdown', e=>{
+      e.preventDefault();
+      if(state==='playing') jump();
+      else if(state==='paused'){ overlay.classList.add('hidden'); state='playing'; }
+      else reset();
+    });
+  }
 
   function showOverlay(t, tx){ ovTitle.textContent=t; ovText.textContent=tx; overlay.classList.remove('hidden'); }
 
