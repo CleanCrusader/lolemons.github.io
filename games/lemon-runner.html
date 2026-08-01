@@ -215,8 +215,8 @@
     const _bodyH = _duck ? lemon.h-22 : lemon.h;
     const _eyeY = (lemon.y - _bodyH/2) - 1;
     tearSpawn += dt;
-    while(tearSpawn > 0.016){
-      tearSpawn -= 0.016;
+    while(tearSpawn > 0.05){
+      tearSpawn -= 0.05;
       const ex = lemon.x + (Math.random()<0.5 ? -11 : 11);
       tears.push({
         x: ex, y: _eyeY+3,
@@ -272,7 +272,7 @@
     state='dead';
     hurtFlash = 0.35;
     high = Math.max(high, score);
-    showOverlay('The lemon is done 🔪',
+    showOverlay('Anyone else smell that fresh cut lemon? 🍋',
       `You lasted ${score} m.  Best: ${high} m.  Press Space or tap to try again.`);
   }
 
