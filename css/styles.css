@@ -942,7 +942,7 @@ nav { flex: 1; }
 
   /* Mobile shop bar */
   .mobile-shop-bar { display: block; }
-  body { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  body:has(.mobile-shop-bar) { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
 
   /* Shop page product cards: full-width stacked */
   .product-card {
