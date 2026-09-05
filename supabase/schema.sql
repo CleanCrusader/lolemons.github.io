@@ -211,10 +211,14 @@ create table if not exists dtc_orders (
   items jsonb not null,
   amount_total numeric,
   currency text,
+  shipping_speed text, -- standard | expedited
+  shipping_amount numeric,
   status text not null default 'paid', -- paid | fulfilling | shipped | failed
   amazon_fulfillment_order_id text,
+  fulfillment_error text,
   tracking_number text,
   carrier_code text,
+  alerted_at timestamptz, -- set once the stuck/failed-order monitor has emailed about this order
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -1,0 +1,31 @@
+name: Monitor Stuck Orders
+
+# Checks for orders that failed or have been stuck in "fulfilling" (reached
+# Veeqo but never pushed on to Amazon MCF) for too long, and emails
+# david@lolemons.com when found. Each order is only alerted once.
+#
+# Required repo secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+# RESEND_API_KEY
+
+on:
+  schedule:
+    - cron: "0 13 */2 * *"   # ~every 48 hours, 13:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  monitor-orders:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Check for stuck or failed orders
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          STUCK_HOURS: "24"
+        run: node scripts/monitor-stuck-orders.js
