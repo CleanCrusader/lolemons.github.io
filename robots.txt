@@ -19,6 +19,7 @@
 
 User-agent: *
 Allow: /
+Disallow: /review.html
 
 # Search/retrieval (citation-driving) — explicitly allowed
 User-agent: OAI-SearchBot
