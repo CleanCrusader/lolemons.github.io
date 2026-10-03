@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>How are you liking it? — Lots of Lemon</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="images/favicon.png" type="image/png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,700;1,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a2e10;
+    --leaf: #2d5a1b;
+    --leaf-pale: #eaf5da;
+    --zest: #f5c400;
+    --zest-pale: #fff9d9;
+    --cream: #ffffff;
+    --mist: #f7faf3;
+    --text-muted: #4a6636;
+    --font-display: 'Fraunces', Georgia, serif;
+    --font-body: 'Work Sans', system-ui, sans-serif;
+    --radius-lg: 20px;
+    --shadow-md: 0 4px 20px rgba(26,46,16,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font-body);
+    background: var(--mist);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px 48px;
+    line-height: 1.6;
+  }
+  .card {
+    background: var(--cream);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    max-width: 440px;
+    width: 100%;
+    padding: 36px 28px 32px;
+    text-align: center;
+  }
+  .lemon { font-size: 2.6rem; line-height: 1; margin-bottom: 10px; }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+  }
+  .product-name {
+    color: var(--leaf);
+    font-weight: 600;
+  }
+  p.lead {
+    color: var(--text-muted);
+    font-size: 1.02rem;
+    margin-bottom: 22px;
+  }
+  .stars {
+    font-size: 2rem;
+    letter-spacing: 6px;
+    margin-bottom: 24px;
+    color: var(--zest);
+  }
+  .cta {
+    display: inline-block;
+    width: 100%;
+    background: var(--zest);
+    color: var(--ink);
+    font-weight: 700;
+    font-size: 1.08rem;
+    padding: 16px 20px;
+    border-radius: 999px;
+    text-decoration: none;
+    box-shadow: var(--shadow-md);
+    transition: transform .15s ease;
+  }
+  .cta:active { transform: scale(0.98); }
+  .fineprint {
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  .divider {
+    margin: 28px 0 18px;
+    border: none;
+    border-top: 1px solid var(--leaf-pale);
+  }
+  .backlink {
+    font-size: 0.92rem;
+    color: var(--leaf);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .backlink:hover { text-decoration: underline; }
+  .notfound { display: none; }
+</style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="lemon">🍋</div>
+    <h1>Loving your <span class="product-name" id="productName">Lots of Lemon</span>?</h1>
+    <p class="lead">Your review helps other pet &amp; home-cleaning folks find a product that actually works — and it takes less than a minute on Amazon.</p>
+    <div class="stars">★★★★★</div>
+    <a class="cta" id="reviewLink" href="#" target="_blank" rel="noopener">Leave a Review on Amazon</a>
+    <p class="fineprint">You'll be taken to Amazon to leave your rating.</p>
+    <hr class="divider">
+    <a class="backlink" href="index.html">← Back to lolemons.com</a>
+  </div>
+
+  <div class="card notfound" id="notfoundCard">
+    <div class="lemon">🍋</div>
+    <h1>Thanks for scanning!</h1>
+    <p class="lead">We couldn't tell which product this is for, but we'd still love your feedback.</p>
+    <a class="cta" href="https://www.amazon.com/review/create-review" target="_blank" rel="noopener">Find Your Order on Amazon</a>
+    <hr class="divider">
+    <a class="backlink" href="index.html">← Back to lolemons.com</a>
+  </div>
+
+<script>
+  // SKU -> { ASIN, display name }. Keep in sync with SKU_TO_ASIN in src/worker.js.
+  const PRODUCTS = {
+    "cc24":  { asin: "B0DF5Y13MZ", name: "Clean Crusader 24oz" },
+    "ccconc": { asin: "B0C14RYXK2", name: "Clean Crusader Concentrate" },
+    "petodor": { asin: "B08JQFG63X", name: "Pet Odor Eliminator" }
+  };
+
+  const params = new URLSearchParams(window.location.search);
+  const key = (params.get("p") || "").toLowerCase();
+  const product = PRODUCTS[key];
+
+  if (product) {
+    document.getElementById("productName").textContent = product.name;
+    document.getElementById("reviewLink").href =
+      "https://www.amazon.com/review/create-review?asin=" + product.asin + "&channel=qr-label";
+  } else {
+    document.getElementById("card").style.display = "none";
+    document.getElementById("notfoundCard").style.display = "block";
+  }
+</script>
+</body>
+</html>
