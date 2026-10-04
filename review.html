@@ -22,6 +22,7 @@
     --font-display: 'Fraunces', Georgia, serif;
     --font-body: 'Work Sans', system-ui, sans-serif;
     --radius-lg: 20px;
+    --radius: 12px;
     --shadow-md: 0 4px 20px rgba(26,46,16,0.12);
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,53 +41,114 @@
     background: var(--cream);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
-    max-width: 440px;
+    max-width: 460px;
     width: 100%;
-    padding: 36px 28px 32px;
+    padding: 36px 28px 30px;
     text-align: center;
   }
   .lemon { font-size: 2.6rem; line-height: 1; margin-bottom: 10px; }
   h1 {
     font-family: var(--font-display);
-    font-size: 1.6rem;
+    font-size: 1.55rem;
     margin-bottom: 8px;
   }
-  .product-name {
-    color: var(--leaf);
-    font-weight: 600;
-  }
+  .product-name { color: var(--leaf); font-weight: 600; }
   p.lead {
     color: var(--text-muted);
-    font-size: 1.02rem;
-    margin-bottom: 22px;
+    font-size: 1rem;
+    margin-bottom: 24px;
   }
   .stars {
-    font-size: 2rem;
-    letter-spacing: 6px;
-    margin-bottom: 24px;
+    font-size: 1.7rem;
+    letter-spacing: 5px;
+    margin-bottom: 20px;
     color: var(--zest);
   }
-  .cta {
-    display: inline-block;
-    width: 100%;
-    background: var(--zest);
-    color: var(--ink);
+
+  .choice-label {
+    font-size: 0.82rem;
     font-weight: 700;
-    font-size: 1.08rem;
-    padding: 16px 20px;
-    border-radius: 999px;
-    text-decoration: none;
-    box-shadow: var(--shadow-md);
-    transition: transform .15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
   }
-  .cta:active { transform: scale(0.98); }
-  .fineprint {
-    margin-top: 16px;
-    font-size: 0.85rem;
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .choice-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    background: var(--mist);
+    border: 1.5px solid var(--leaf-pale);
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 1rem;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    text-decoration: none;
+    transition: transform .15s ease, border-color .15s ease, background .15s ease;
+  }
+  .choice-btn:active { transform: scale(0.98); }
+  .choice-btn .icon {
+    font-size: 1.4rem;
+    width: 34px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .choice-btn .text small {
+    display: block;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    margin-top: 1px;
+  }
+  .choice-btn.amazon { border-color: #f5c400; background: var(--zest-pale); }
+  .choice-btn.amazon:hover { border-color: var(--zest); }
+  .choice-btn.lolemons { border-color: var(--leaf-mid, #4a7c20); }
+  .choice-btn.lolemons:hover { background: var(--leaf-pale); }
+
+  .guarantee {
+    margin-top: 26px;
+    background: var(--leaf-pale);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    text-align: left;
+  }
+  .guarantee .gt-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    color: var(--leaf);
+  }
+  .guarantee p {
+    font-size: 0.88rem;
     color: var(--text-muted);
   }
+
+  .contact-row {
+    margin-top: 18px;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+  }
+  .contact-row a {
+    color: var(--leaf);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .contact-row a:hover { text-decoration: underline; }
+
   .divider {
-    margin: 28px 0 18px;
+    margin: 24px 0 16px;
     border: none;
     border-top: 1px solid var(--leaf-pale);
   }
@@ -104,10 +166,28 @@
   <div class="card" id="card">
     <div class="lemon">🍋</div>
     <h1>Loving your <span class="product-name" id="productName">Lots of Lemon</span>?</h1>
-    <p class="lead">Your review helps other pet &amp; home-cleaning folks find a product that actually works — and it takes less than a minute on Amazon.</p>
+    <p class="lead">Your review helps other pet &amp; home-cleaning folks find a product that actually works — it takes less than a minute.</p>
     <div class="stars">★★★★★</div>
-    <a class="cta" id="reviewLink" href="#" target="_blank" rel="noopener">Leave a Review on Amazon</a>
-    <p class="fineprint">You'll be taken to Amazon to leave your rating.</p>
+
+    <div class="choice-label">Leave your review</div>
+    <div class="choices">
+      <a class="choice-btn amazon" id="amazonLink" href="#" target="_blank" rel="noopener">
+        <span class="icon">📦</span>
+        <span class="text">Review on Amazon<small>Rate your order on our Amazon listing</small></span>
+      </a>
+      <a class="choice-btn lolemons" id="lolemonsLink" href="#">
+        <span class="icon">🍋</span>
+        <span class="text">Review on Lolemons.com<small>Leave a review right on our product page</small></span>
+      </a>
+    </div>
+
+    <div class="guarantee">
+      <div class="gt-head">🛡️ 100% Satisfaction Guarantee</div>
+      <p>If you're not happy for any reason, email us and we'll make it right — a replacement or a full refund, your call.</p>
+    </div>
+
+    <p class="contact-row">Have an issue before you leave a review? <a href="mailto:contact@lolemons.com">contact@lolemons.com</a> — we read every message.</p>
+
     <hr class="divider">
     <a class="backlink" href="index.html">← Back to lolemons.com</a>
   </div>
@@ -116,17 +196,21 @@
     <div class="lemon">🍋</div>
     <h1>Thanks for scanning!</h1>
     <p class="lead">We couldn't tell which product this is for, but we'd still love your feedback.</p>
-    <a class="cta" href="https://www.amazon.com/review/create-review" target="_blank" rel="noopener">Find Your Order on Amazon</a>
+    <a class="choice-btn amazon" href="https://www.amazon.com/review/create-review" target="_blank" rel="noopener" style="justify-content:center;">
+      <span class="icon">📦</span><span class="text">Find Your Order on Amazon</span>
+    </a>
+    <p class="contact-row">Have an issue? <a href="mailto:contact@lolemons.com">contact@lolemons.com</a> — we read every message.</p>
     <hr class="divider">
     <a class="backlink" href="index.html">← Back to lolemons.com</a>
   </div>
 
 <script>
-  // SKU -> { ASIN, display name }. Keep in sync with SKU_TO_ASIN in src/worker.js.
+  // SKU -> ASIN, display name, and the products.html anchor for its
+  // on-site review form. Keep ASINs in sync with SKU_TO_ASIN in src/worker.js.
   const PRODUCTS = {
-    "cc24":  { asin: "B0DF5Y13MZ", name: "Clean Crusader 24oz" },
-    "ccconc": { asin: "B0C14RYXK2", name: "Clean Crusader Concentrate" },
-    "petodor": { asin: "B08JQFG63X", name: "Pet Odor Eliminator" }
+    "cc24":    { asin: "B0DF5Y13MZ", name: "Clean Crusader 24oz",         anchor: "clean-crusader-24oz" },
+    "ccconc":  { asin: "B0C14RYXK2", name: "Clean Crusader Concentrate",  anchor: "clean-crusader-concentrate" },
+    "petodor": { asin: "B08JQFG63X", name: "Pet Odor Eliminator",         anchor: "pet-odor-eliminator" }
   };
 
   const params = new URLSearchParams(window.location.search);
@@ -135,8 +219,10 @@
 
   if (product) {
     document.getElementById("productName").textContent = product.name;
-    document.getElementById("reviewLink").href =
+    document.getElementById("amazonLink").href =
       "https://www.amazon.com/review/create-review?asin=" + product.asin + "&channel=qr-label";
+    document.getElementById("lolemonsLink").href =
+      "products.html#" + product.anchor;
   } else {
     document.getElementById("card").style.display = "none";
     document.getElementById("notfoundCard").style.display = "block";
