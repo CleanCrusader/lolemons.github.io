@@ -345,6 +345,19 @@
 <script src="js/reviews.js"></script>
 <script src="js/prices.js"></script>
 <script src="js/cart.js"></script>
+<script>
+  // If a customer lands here from a "review on lolemons.com" link
+  // (e.g. products.html#clean-crusader-24oz), auto-open that product's
+  // review form instead of making them hunt for it.
+  (function () {
+    var id = window.location.hash.replace("#", "");
+    if (!id) return;
+    var article = document.getElementById(id);
+    if (!article) return;
+    var panel = article.querySelector("[data-reviews-panel]");
+    if (panel) panel.open = true;
+  })();
+</script>
 
 <!-- Cart drawer -->
 <div class="cart-overlay" id="cartOverlay"></div>
