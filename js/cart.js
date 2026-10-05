@@ -4,7 +4,7 @@
   const CATALOG = {
     "FV-LNLR-DPRX": { name: "Clean Crusader — 24oz", price: 14.99, img: "images/Clean_Crusader_24oz.png" },
     "IT-3U6C-E8HZ": { name: "Concentrate — 16oz", price: 23.99, img: "images/Clean_Crusader_Concentrate.png" },
-    "LOL1A": { name: "Pet Odor & Stain Eliminator", price: 19.99, img: "images/lol1a.jpg" },
+    "LOL1A": { name: "Pet Odor & Stain Eliminator", price: 19.99, img: "images/pet-odor-eliminator.jpg" },
   };
 
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } };

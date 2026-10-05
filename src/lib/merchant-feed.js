@@ -49,7 +49,7 @@ export const PRODUCTS = [
     description:
       "Enzyme and odor-encapsulation formula built for pet messes — urine, vomit, and stains on carpet, hardwood, fabric, and turf. Breaks down stains and odor at the source and traps what's left, finished with real cold-pressed lemon oil. Ingredients: filtered water, advanced biological enzyme and odor-encapsulation blend, cold-pressed lemon oil, SugaMulse (plant-based surfactant).",
     gtin: "00860005194308",
-    image: `${SITE}/images/lol1a.jpg`,
+    image: `${SITE}/images/pet-odor-eliminator.jpg`,
     link: `${SITE}/products.html#pet-odor-eliminator`,
     productType: "Cleaning Supplies > Pet Odor & Stain Removers",
     priceFallback: "19.99",
