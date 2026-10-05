@@ -15,6 +15,7 @@
 import Stripe from "stripe";
 import { sbInsert, sbPatch, sbSelect, sbRpc } from "./lib/sb.js";
 import { sendEmail } from "./lib/email.js";
+import { handleMerchantFeed } from "./lib/merchant-feed.js";
 import { isPasswordSet, setPassword, verifyPassword, startPasswordReset, resetPasswordWithToken } from "./lib/auth.js";
 import {
   findProductBySku,
@@ -864,6 +865,10 @@ export default {
     const url = new URL(request.url);
 
     try {
+      if (url.pathname === "/api/merchant-feed.xml" && request.method === "GET") {
+        return await handleMerchantFeed(env);
+      }
+
       if (url.pathname === "/api/admin/setup-veeqo" && request.method === "GET") {
         return await handleSetupVeeqo(request, env);
       }
