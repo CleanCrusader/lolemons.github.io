@@ -115,6 +115,8 @@ export async function handleMerchantFeed(env) {
       "Content-Type": "application/xml; charset=utf-8",
       // Short cache: keeps Supabase load trivial while prices stay near-live.
       "Cache-Control": "public, max-age=900",
+      // Keep the feed out of search results; Merchant Center still fetches it.
+      "X-Robots-Tag": "noindex, nofollow",
     },
   });
 }
