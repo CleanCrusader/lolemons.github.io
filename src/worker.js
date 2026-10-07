@@ -80,7 +80,7 @@ async function handleCreateCheckoutSession(request, env) {
       {
         shipping_rate_data: {
           type: "fixed_amount",
-          fixed_amount: { amount: 0, currency: "usd" },
+          fixed_amount: { amount: 499, currency: "usd" },
           display_name: "Standard Shipping",
           delivery_estimate: {
             minimum: { unit: "business_day", value: 3 },
@@ -91,7 +91,7 @@ async function handleCreateCheckoutSession(request, env) {
       {
         shipping_rate_data: {
           type: "fixed_amount",
-          fixed_amount: { amount: 500, currency: "usd" },
+          fixed_amount: { amount: 999, currency: "usd" },
           display_name: "Expedited Shipping",
           delivery_estimate: {
             minimum: { unit: "business_day", value: 1 },
@@ -150,8 +150,8 @@ async function handleCreateCartCheckout(request, env) {
     line_items: lineItems,
     shipping_address_collection: { allowed_countries: ["US"] },
     shipping_options: [
-      { shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: 0, currency: "usd" }, display_name: "Standard Shipping", delivery_estimate: { minimum: { unit: "business_day", value: 3 }, maximum: { unit: "business_day", value: 5 } } } },
-      { shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: 500, currency: "usd" }, display_name: "Expedited Shipping", delivery_estimate: { minimum: { unit: "business_day", value: 1 }, maximum: { unit: "business_day", value: 2 } } } },
+      { shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: 499, currency: "usd" }, display_name: "Standard Shipping", delivery_estimate: { minimum: { unit: "business_day", value: 3 }, maximum: { unit: "business_day", value: 5 } } } },
+      { shipping_rate_data: { type: "fixed_amount", fixed_amount: { amount: 999, currency: "usd" }, display_name: "Expedited Shipping", delivery_estimate: { minimum: { unit: "business_day", value: 1 }, maximum: { unit: "business_day", value: 2 } } } },
     ],
     expires_at: Math.floor(Date.now() / 1000) + HOLD_MINUTES * 60,
     success_url: `${env.SITE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,

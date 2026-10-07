@@ -26,8 +26,8 @@ const GOOGLE_CATEGORY = "4973";
 // addresses to US) keeps the products from being offered anywhere else.
 // Keep these in sync with shipping_options in src/worker.js.
 const SHIPPING = [
-  { country: "US", service: "Standard", price: "0.00 USD" }, // free, 3-5 business days
-  { country: "US", service: "Expedited", price: "5.00 USD" }, // 1-2 business days
+  { country: "US", service: "Standard", price: "4.99 USD" }, // 3-5 business days
+  { country: "US", service: "Expedited", price: "9.99 USD" }, // 1-2 business days
 ];
 
 export const PRODUCTS = [
