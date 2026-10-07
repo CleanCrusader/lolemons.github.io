@@ -20,6 +20,16 @@ const BRAND = "Lots of Lemon";
 // Household Cleaning Supplies > Household Cleaning Products
 const GOOGLE_CATEGORY = "4973";
 
+// We only sell and ship within the United States. Google decides which
+// countries a product is eligible in from its shipping info, so listing only
+// US here (matching the Stripe checkout, which also restricts shipping
+// addresses to US) keeps the products from being offered anywhere else.
+// Keep these in sync with shipping_options in src/worker.js.
+const SHIPPING = [
+  { country: "US", service: "Standard", price: "0.00 USD" }, // free, 3-5 business days
+  { country: "US", service: "Expedited", price: "5.00 USD" }, // 1-2 business days
+];
+
 export const PRODUCTS = [
   {
     sku: "FV-LNLR-DPRX",
@@ -89,6 +99,13 @@ export function buildMerchantFeed(inventoryRows) {
       <g:brand>${esc(BRAND)}</g:brand>
       <g:gtin>${esc(p.gtin)}</g:gtin>
       <g:condition>new</g:condition>
+${SHIPPING.map(
+  (sh) => `      <g:shipping>
+        <g:country>${esc(sh.country)}</g:country>
+        <g:service>${esc(sh.service)}</g:service>
+        <g:price>${esc(sh.price)}</g:price>
+      </g:shipping>`
+).join("\n")}
       <g:google_product_category>${GOOGLE_CATEGORY}</g:google_product_category>
       <g:product_type>${esc(p.productType)}</g:product_type>
     </item>`;
