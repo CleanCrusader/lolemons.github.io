@@ -16,6 +16,7 @@ import Stripe from "stripe";
 import { sbInsert, sbPatch, sbSelect, sbRpc } from "./lib/sb.js";
 import { sendEmail } from "./lib/email.js";
 import { handleMerchantFeed } from "./lib/merchant-feed.js";
+import { serveLivePage } from "./lib/live-pages.js";
 import { isPasswordSet, setPassword, verifyPassword, startPasswordReset, resetPasswordWithToken } from "./lib/auth.js";
 import {
   findProductBySku,
@@ -940,6 +941,10 @@ export default {
     // run_worker_first is scoped to "/api/*" in wrangler.jsonc, so in
     // practice nothing else reaches this point — but fall back to the
     // static asset just in case.
+    // Home and product pages get live Supabase price/stock injected.
+    if (["/", "/index", "/index.html", "/products", "/products.html"].includes(url.pathname) && request.method === "GET") {
+      return await serveLivePage(request, env);
+    }
     return env.ASSETS.fetch(request);
   },
 };

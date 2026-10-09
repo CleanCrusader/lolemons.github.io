@@ -18,6 +18,6 @@
   "assets": {
     "directory": ".",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    "run_worker_first": ["/api/*", "/", "/index", "/index.html", "/products", "/products.html"]
   }
 }

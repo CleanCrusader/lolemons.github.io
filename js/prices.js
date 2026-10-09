@@ -8,7 +8,8 @@
 //
 // This makes the admin price panel the single source of truth: change a
 // price there and every page reflects it on next load. The hardcoded prices
-// in the HTML are fallbacks shown only if this fetch fails.
+// in the HTML are fallbacks; the Worker also injects live prices server-side
+// (src/lib/live-pages.js), so crawlers and no-JS visitors see current prices.
 
 (function () {
   const SUPABASE_URL = "https://fkdjfrvyytkiutmwkzap.supabase.co";
