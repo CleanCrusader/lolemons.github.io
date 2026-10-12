@@ -293,7 +293,7 @@ async function sendOrderConfirmation(env, order, shipping) {
   const NAMES = {
     "FV-LNLR-DPRX": "Clean Crusader — 24oz",
     "IT-3U6C-E8HZ": "Concentrate — 16oz",
-    "LOL1A": "Pet Odor & Stain Eliminator",
+    "LOL1A": "Pet Odor Eliminator",
   };
   const itemRows = (order.items || [])
     .map((i) => `<tr><td style="padding:4px 0;">${esc(NAMES[i.sku] || i.sku)} × ${i.quantity}</td></tr>`)
