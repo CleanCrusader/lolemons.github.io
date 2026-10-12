@@ -792,6 +792,9 @@ nav { flex: 1; }
   margin-bottom: 12px;
 }
 .footer-brand em { color: var(--zest); font-style: normal; }
+.footer-contact { font-style: normal; font-size: 0.85rem; color: rgba(255,255,255,0.7); line-height: 1.7; margin-top: 14px; }
+.footer-contact a { color: rgba(255,255,255,0.85); text-decoration: none; }
+.footer-contact a:hover { color: var(--zest); }
 .footer-tagline { font-size: 0.85rem; color: rgba(255,255,255,0.6); line-height: 1.6; }
 .footer-grid h5 {
   font-family: var(--font-mono);
