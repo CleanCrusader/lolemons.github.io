@@ -57,7 +57,7 @@ export const PRODUCTS = [
     sku: "LOL1A",
     title: "Pet Odor Eliminator with Cold-Pressed Lemon Oil, 24oz",
     description:
-      "Enzyme and odor-encapsulation formula built for pet messes — urine, vomit, and stains on carpet, hardwood, fabric, and turf. Breaks down stains and odor at the source and traps what's left, finished with real cold-pressed lemon oil. Ingredients: filtered water, advanced biological enzyme and odor-encapsulation blend, cold-pressed lemon oil, Natural Surfactant.",
+      "Enzyme and odor-encapsulation formula built for pet messes — urine and vomit odors on carpet, hardwood, fabric, and turf. Breaks down odor at the source and traps what's left, finished with real cold-pressed lemon oil. Ingredients: filtered water, advanced biological enzyme and odor-encapsulation blend, cold-pressed lemon oil, Natural Surfactant.",
     gtin: "00860005194308",
     image: `${SITE}/images/pet-odor-eliminator.jpg`,
     link: `${SITE}/products.html#pet-odor-eliminator`,
