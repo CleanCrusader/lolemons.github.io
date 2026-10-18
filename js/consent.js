@@ -16,6 +16,8 @@
   var browserOptOut = navigator.globalPrivacyControl === true || navigator.doNotTrack === "1";
   function optedOut() { return browserOptOut || get() === "out"; }
 
+  window.lolAdsOptedOut = optedOut; // used by js/conversion.js
+
   window.dataLayer = window.dataLayer || [];
   window.gtag = function () { window.dataLayer.push(arguments); };
 

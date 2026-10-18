@@ -837,6 +837,23 @@ async function handleUpdatePrice(request, env) {
   return Response.json({ ok: true, sku, price, stripe_price_id: newPrice.id });
 }
 
+// GET /api/checkout-summary?session_id=cs_...
+// Minimal, non-identifying data for the Google Ads purchase conversion on
+// success.html: whether the session was paid, and its total. No PII returned.
+async function handleCheckoutSummary(request, env) {
+  const sid = new URL(request.url).searchParams.get("session_id") || "";
+  if (!/^cs_[A-Za-z0-9_]+$/.test(sid)) return Response.json({ error: "invalid_session" }, { status: 400 });
+  const session = await getStripe(env).checkout.sessions.retrieve(sid);
+  return Response.json(
+    {
+      paid: session.payment_status === "paid",
+      value: (session.amount_total || 0) / 100,
+      currency: String(session.currency || "usd").toUpperCase(),
+    },
+    { headers: { "Cache-Control": "no-store" } }
+  );
+}
+
 async function handleReviewAction(request, env) {
   if (!(await verifyPassword(env, request.headers.get("x-admin-password")))) {
     return new Response("Forbidden", { status: 403 });
@@ -866,6 +883,10 @@ export default {
     const url = new URL(request.url);
 
     try {
+      if (url.pathname === "/api/checkout-summary" && request.method === "GET") {
+        return await handleCheckoutSummary(request, env);
+      }
+
       if (url.pathname === "/api/merchant-feed.xml" && request.method === "GET") {
         return await handleMerchantFeed(env);
       }
