@@ -1127,3 +1127,19 @@ nav { flex: 1; }
   border: 0;
   transition: height 0.15s ease;
 }
+
+/* Advertising notice (js/consent.js) */
+.consent-banner {
+  position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 1000;
+  max-width: 560px; margin: 0 auto;
+  background: var(--ink, #1a2e10); color: #fff;
+  border-radius: 14px; padding: 14px 16px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.28);
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  font-size: 0.85rem; line-height: 1.5;
+}
+.consent-banner p { margin: 0; flex: 1 1 260px; color: rgba(255,255,255,0.9); }
+.consent-banner a { color: var(--zest, #f5c400); text-decoration: underline; }
+.consent-actions { display: flex; gap: 8px; }
+.consent-actions .btn { padding: 8px 18px; font-size: 0.85rem; }
+.consent-actions .consent-optout { background: transparent; color: #fff; border: 1.5px solid rgba(255,255,255,0.5); }
