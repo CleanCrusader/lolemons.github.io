@@ -9,7 +9,7 @@
 // (format: "AW-362740851/<conversion label>").
 
 (function () {
-  var SEND_TO = "";
+  var SEND_TO = "AW-362740851/fpNcCJCFwqAdEPP4-6wB";
   if (!SEND_TO) return;
 
   var sid = new URLSearchParams(location.search).get("session_id");
